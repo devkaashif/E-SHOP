@@ -51,7 +51,7 @@
 
     .container {
       width: 100%;
-      max-width: 900px;
+      max-width: 400px;
       margin: 0 auto;
     }
 
@@ -101,10 +101,158 @@
       flex-direction: column;
     }
 
+    .user-profile {
+      padding: 20px;
+      background: var(--light);
+      border-bottom: 1px solid var(--gray-light);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .user-info {
+      flex: 1;
+    }
+
+    .user-name {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .user-status {
+      font-size: 0.8rem;
+      color: var(--gray);
+    }
+
+    .change-name-btn {
+      background: none;
+      border: 1px solid var(--gray-light);
+      padding: 6px 12px;
+      border-radius: var(--border-radius-sm);
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--primary);
+      transition: var(--transition);
+    }
+
+    .change-name-btn:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    .name-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition);
+    }
+
+    .name-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--box-shadow-lg);
+      width: 90%;
+      max-width: 400px;
+      transform: translateY(20px);
+      transition: var(--transition);
+    }
+
+    .name-modal.active .modal-content {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--gray-light);
+      border-radius: var(--border-radius-sm);
+      font-size: 1rem;
+      margin-bottom: 20px;
+      transition: var(--transition);
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border-radius: var(--border-radius-sm);
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .modal-btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .modal-btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .modal-btn-secondary {
+      background: var(--gray-light);
+      color: var(--gray-dark);
+    }
+
+    .modal-btn-secondary:hover {
+      background: var(--gray);
+      color: white;
+    }
+
     .notes-container {
       padding: 30px;
       flex: 1;
-      max-height: 500px;
+      max-height: 400px;
       overflow-y: auto;
       position: relative;
       border-bottom: 1px solid var(--gray-light);
@@ -416,7 +564,19 @@
     </header>
     
     <div class="app-container">
-      <!-- Notes Section (Now at the top) -->
+      <!-- User Profile Section -->
+      <div class="user-profile">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Guest User</div>
+          <div class="user-status" id="userStatus">Set your name to get started</div>
+        </div>
+        <button class="change-name-btn" id="changeNameBtn">
+          <i class="fas fa-edit"></i> Change
+        </button>
+      </div>
+
+      <!-- Notes Section -->
       <div class="notes-container">
         <div class="notes-header">
           <h2>Shared Notes</h2>
@@ -434,19 +594,16 @@
         </div>
       </div>
       
-      <!-- Form Section (Now at the bottom) -->
+      <!-- Form Section -->
       <div class="form-container">
         <form id="noteForm">
           <textarea id="noteInput" placeholder="What's on your mind? Share it with the world..." required maxlength="500"></textarea>
           <div class="char-counter">
             <span id="charCount">0</span>/500 characters
           </div>
-          <div class="input-group">
-            <input type="text" id="authorInput" placeholder="Your name (optional)" maxlength="30">
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-paper-plane"></i> Share Note
-            </button>
-          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-paper-plane"></i> Share Note
+          </button>
         </form>
       </div>
     </div>
@@ -454,6 +611,20 @@
     <div class="status-indicator">
       <div class="status-dot"></div>
       <span id="statusText">Connected to Firebase</span>
+    </div>
+  </div>
+
+  <!-- Name Change Modal -->
+  <div class="name-modal" id="nameModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Set Your Display Name</h3>
+      </div>
+      <input type="text" class="modal-input" id="nameInput" placeholder="Enter your name" maxlength="30" autofocus>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-secondary" id="cancelNameBtn">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="saveNameBtn">Save Name</button>
+      </div>
     </div>
   </div>
 
@@ -485,17 +656,32 @@
     // DOM Elements
     const noteForm = document.getElementById("noteForm");
     const noteInput = document.getElementById("noteInput");
-    const authorInput = document.getElementById("authorInput");
     const notesDiv = document.getElementById("notes");
     const notesCount = document.querySelector(".notes-count");
     const sortButtons = document.querySelectorAll(".sort-btn");
     const charCount = document.getElementById("charCount");
     const statusText = document.getElementById("statusText");
+    const userName = document.getElementById("userName");
+    const userAvatar = document.getElementById("userAvatar");
+    const userStatus = document.getElementById("userStatus");
+    const changeNameBtn = document.getElementById("changeNameBtn");
+    const nameModal = document.getElementById("nameModal");
+    const nameInput = document.getElementById("nameInput");
+    const saveNameBtn = document.getElementById("saveNameBtn");
+    const cancelNameBtn = document.getElementById("cancelNameBtn");
 
     // App State
     let currentSort = "newest";
     let notes = [];
     let unsubscribe = null;
+    let currentUserName = localStorage.getItem('userName') || 'Guest User';
+
+    // Initialize user name
+    function initializeUserName() {
+      userName.textContent = currentUserName;
+      userAvatar.textContent = currentUserName.charAt(0).toUpperCase();
+      userStatus.textContent = `Ready to share notes`;
+    }
 
     // Character counter
     noteInput.addEventListener('input', () => {
@@ -521,7 +707,6 @@
     noteForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const note = noteInput.value.trim();
-      const author = authorInput.value.trim() || "Anonymous";
       
       if (note) {
         try {
@@ -534,7 +719,7 @@
           const tempNote = {
             id: tempId,
             text: note,
-            author: author,
+            author: currentUserName,
             timestamp: null
           };
           
@@ -543,13 +728,12 @@
           
           // Clear form immediately for better UX
           noteInput.value = "";
-          authorInput.value = "";
           charCount.textContent = "0";
           
           // Add to Firebase
           await db.collection("notes").add({
             text: note,
-            author: author,
+            author: currentUserName,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
           
@@ -664,6 +848,34 @@
       });
     });
 
+    // Name change functionality
+    changeNameBtn.addEventListener('click', () => {
+      nameInput.value = currentUserName;
+      nameModal.classList.add('active');
+      nameInput.focus();
+    });
+
+    saveNameBtn.addEventListener('click', () => {
+      const newName = nameInput.value.trim();
+      if (newName) {
+        currentUserName = newName;
+        localStorage.setItem('userName', newName);
+        initializeUserName();
+        nameModal.classList.remove('active');
+      }
+    });
+
+    cancelNameBtn.addEventListener('click', () => {
+      nameModal.classList.remove('active');
+    });
+
+    // Close modal when clicking outside
+    nameModal.addEventListener('click', (e) => {
+      if (e.target === nameModal) {
+        nameModal.classList.remove('active');
+      }
+    });
+
     // Show Notes in Real-time
     unsubscribe = db.collection("notes")
       .orderBy("timestamp", "desc")
@@ -688,6 +900,9 @@
         `;
         statusText.textContent = "Offline - reconnecting...";
       });
+
+    // Initialize the app
+    initializeUserName();
 
     // Clean up on page unload
     window.addEventListener('beforeunload', () => {
