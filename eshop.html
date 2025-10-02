@@ -5,27 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Firebase Note Sharing</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #6C63FF;
-      --primary-dark: #5A52D5;
-      --primary-light: #8B85FF;
-      --secondary: #FF6584;
-      --accent: #36D1DC;
-      --light: #F8F9FF;
-      --dark: #2D2B55;
-      --gray: #A0A3BD;
-      --gray-light: #EFF0F7;
-      --success: #4ADE80;
-      --danger: #FF4757;
-      --warning: #FFC107;
-      --border-radius: 16px;
+      --primary: #6366F1;
+      --primary-dark: #4F46E5;
+      --primary-light: #8B87EA;
+      --secondary: #EC4899;
+      --accent: #10B981;
+      --light: #F8FAFC;
+      --dark: #1E293B;
+      --gray: #64748B;
+      --gray-light: #E2E8F0;
+      --gray-dark: #475569;
+      --success: #10B981;
+      --danger: #EF4444;
+      --warning: #F59E0B;
+      --border-radius: 12px;
       --border-radius-sm: 8px;
-      --box-shadow: 0 10px 30px rgba(108, 99, 255, 0.15);
-      --box-shadow-lg: 0 20px 50px rgba(108, 99, 255, 0.2);
-      --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      --gradient: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      --border-radius-lg: 16px;
+      --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --transition: all 0.2s ease-in-out;
+      --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     }
 
     * {
@@ -35,8 +37,8 @@
     }
 
     body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #f5f7ff 0%, #e6e9ff 100%);
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
       color: var(--dark);
       line-height: 1.6;
       min-height: 100vh;
@@ -51,114 +53,63 @@
       width: 100%;
       max-width: 900px;
       margin: 0 auto;
-      animation: fadeIn 0.8s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes slideIn {
-      from { transform: translateX(-20px); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-
-    @keyframes float {
-      0% { transform: translateY(0px); }
-      50% { transform: translateY(-10px); }
-      100% { transform: translateY(0px); }
     }
 
     header {
       text-align: center;
       margin-bottom: 40px;
       width: 100%;
-      position: relative;
-    }
-
-    .header-bg {
-      position: absolute;
-      top: -50px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
-      height: 200px;
-      background: var(--gradient);
-      border-radius: 50%;
-      filter: blur(60px);
-      opacity: 0.2;
-      z-index: -1;
-      animation: float 6s ease-in-out infinite;
     }
 
     h1 {
       color: var(--dark);
-      margin-bottom: 10px;
-      font-size: 2.8rem;
+      margin-bottom: 12px;
+      font-size: 2.5rem;
       font-weight: 700;
-      background: var(--gradient);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
       display: inline-block;
+      position: relative;
+    }
+
+    h1::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 4px;
+      background: var(--gradient);
+      border-radius: 2px;
     }
 
     .subtitle {
       color: var(--gray);
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       margin-bottom: 30px;
       font-weight: 400;
     }
 
     .app-container {
       background: white;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--box-shadow-lg);
       overflow: hidden;
       width: 100%;
-      transform: translateY(0);
-      transition: var(--transition);
       position: relative;
       z-index: 1;
     }
 
-    .app-container:hover {
-      box-shadow: var(--box-shadow-lg);
-      transform: translateY(-5px);
-    }
-
     .form-container {
       padding: 30px;
-      background: var(--light);
+      background: white;
       border-bottom: 1px solid var(--gray-light);
       position: relative;
-      overflow: hidden;
-    }
-
-    .form-bg {
-      position: absolute;
-      top: -50px;
-      right: -50px;
-      width: 150px;
-      height: 150px;
-      background: var(--gradient);
-      border-radius: 50%;
-      opacity: 0.1;
     }
 
     #noteForm {
       display: flex;
       flex-direction: column;
       gap: 20px;
-      position: relative;
-      z-index: 2;
     }
 
     .input-group {
@@ -169,11 +120,11 @@
     input, textarea {
       padding: 16px 20px;
       border-radius: var(--border-radius-sm);
-      border: 2px solid var(--gray-light);
+      border: 1px solid var(--gray-light);
       font-size: 1rem;
       transition: var(--transition);
       flex: 1;
-      font-family: 'Poppins', sans-serif;
+      font-family: 'Inter', sans-serif;
       background: white;
     }
 
@@ -185,8 +136,7 @@
     input:focus, textarea:focus {
       outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.1);
-      transform: translateY(-2px);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
 
     .btn {
@@ -201,43 +151,28 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-      transition: left 0.7s;
-    }
-
-    .btn:hover::before {
-      left: 100%;
     }
 
     .btn-primary {
-      background: var(--gradient);
+      background: var(--primary);
       color: white;
-      box-shadow: 0 5px 15px rgba(108, 99, 255, 0.3);
     }
 
     .btn-primary:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(108, 99, 255, 0.4);
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
     }
 
     .btn-danger {
-      background: var(--danger);
-      color: white;
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--gray-light);
     }
 
     .btn-danger:hover {
-      background: #FF3742;
+      background: var(--danger);
+      color: white;
       transform: translateY(-2px);
     }
 
@@ -292,7 +227,7 @@
 
     .sort-btn {
       background: none;
-      border: 2px solid var(--gray-light);
+      border: 1px solid var(--gray-light);
       padding: 8px 16px;
       border-radius: 20px;
       cursor: pointer;
@@ -320,35 +255,28 @@
     .note {
       background: white;
       padding: 20px;
-      border-radius: var(--border-radius-sm);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-      border-left: 4px solid var(--primary);
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
       transition: var(--transition);
       position: relative;
-      overflow: hidden;
-      animation: slideIn 0.5s ease-out;
+      border-left: 4px solid var(--primary);
+      animation: slideIn 0.3s ease-out;
     }
 
-    .note::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: var(--gradient);
-      opacity: 0;
-      transition: var(--transition);
-      z-index: -1;
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .note:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    }
-
-    .note:hover::before {
-      opacity: 0.03;
+      transform: translateY(-3px);
+      box-shadow: var(--box-shadow-lg);
     }
 
     .note-content {
@@ -383,7 +311,6 @@
       text-align: center;
       padding: 60px 20px;
       color: var(--gray);
-      animation: pulse 2s infinite;
     }
 
     .empty-state i {
@@ -398,141 +325,35 @@
       color: var(--gray);
     }
 
-    .notification {
-      position: fixed;
-      top: 30px;
-      right: 30px;
-      padding: 18px 24px;
-      border-radius: var(--border-radius-sm);
-      background: white;
-      box-shadow: var(--box-shadow);
+    .char-counter {
+      text-align: right;
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 8px;
+    }
+
+    .status-indicator {
       display: flex;
       align-items: center;
-      gap: 12px;
-      transform: translateX(150%);
-      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      z-index: 1000;
-      border-left: 4px solid var(--success);
-      max-width: 350px;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 20px;
+      justify-content: center;
     }
 
-    .notification.show {
-      transform: translateX(0);
-    }
-
-    .notification.success {
-      border-left-color: var(--success);
-    }
-
-    .notification.error {
-      border-left-color: var(--danger);
-    }
-
-    .notification i {
-      font-size: 1.5rem;
-    }
-
-    .notification.success i {
-      color: var(--success);
-    }
-
-    .notification.error i {
-      color: var(--danger);
-    }
-
-    .floating-elements {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    .floating-element {
-      position: absolute;
+    .status-dot {
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
-      background: var(--gradient);
-      opacity: 0.1;
-      animation: float 15s infinite linear;
+      background: var(--success);
+      animation: pulse 2s infinite;
     }
 
-    .floating-element:nth-child(1) {
-      width: 100px;
-      height: 100px;
-      top: 10%;
-      left: 10%;
-      animation-delay: 0s;
-    }
-
-    .floating-element:nth-child(2) {
-      width: 150px;
-      height: 150px;
-      top: 60%;
-      left: 80%;
-      animation-delay: 2s;
-      animation-duration: 20s;
-    }
-
-    .floating-element:nth-child(3) {
-      width: 70px;
-      height: 70px;
-      top: 80%;
-      left: 20%;
-      animation-delay: 4s;
-      animation-duration: 25s;
-    }
-
-    .floating-element:nth-child(4) {
-      width: 120px;
-      height: 120px;
-      top: 20%;
-      left: 85%;
-      animation-delay: 6s;
-      animation-duration: 18s;
-    }
-
-    .note-enter {
-      animation: noteSlideIn 0.5s ease-out;
-    }
-
-    @keyframes noteSlideIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.9);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    .note-exit {
-      animation: noteSlideOut 0.3s ease-in;
-    }
-
-    @keyframes noteSlideOut {
-      from {
-        opacity: 1;
-        transform: translateX(0);
-      }
-      to {
-        opacity: 0;
-        transform: translateX(100%);
-      }
-    }
-
-    .performance-indicator {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      z-index: 1000;
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
     }
 
     @media (max-width: 768px) {
@@ -562,51 +383,49 @@
       }
       
       h1 {
-        font-size: 2.2rem;
+        font-size: 2rem;
       }
     }
 
     .pulse {
-      animation: pulse 2s infinite;
+      animation: pulse 1s infinite;
     }
 
-    .optimized-note {
-      will-change: transform, opacity;
+    .fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateX(100%);
+      }
     }
   </style>
 </head>
 <body>
-  <div class="floating-elements">
-    <div class="floating-element"></div>
-    <div class="floating-element"></div>
-    <div class="floating-element"></div>
-    <div class="floating-element"></div>
-  </div>
-
-  <div class="performance-indicator" id="performanceIndicator">
-    <i class="fas fa-bolt"></i> <span id="loadTime">Loading...</span>
-  </div>
-
   <div class="container">
     <header>
-      <div class="header-bg"></div>
-      <h1><i class="fas fa-sticky-note"></i> Firebase Note Sharing</h1>
-      <p class="subtitle">Fast, optimized note sharing with real-time updates</p>
+      <h1><i class="fas fa-sticky-note"></i> NoteShare</h1>
+      <p class="subtitle">Collaborate in real-time with modern note sharing</p>
     </header>
     
     <div class="app-container">
       <div class="form-container">
-        <div class="form-bg"></div>
         <form id="noteForm">
-          <textarea id="noteInput" placeholder="Write your note here..." required maxlength="500"></textarea>
+          <textarea id="noteInput" placeholder="What's on your mind? Share it with the world..." required maxlength="500"></textarea>
+          <div class="char-counter">
+            <span id="charCount">0</span>/500 characters
+          </div>
           <div class="input-group">
             <input type="text" id="authorInput" placeholder="Your name (optional)" maxlength="30">
             <button type="submit" class="btn btn-primary">
-              <i class="fas fa-plus"></i> Add Note
+              <i class="fas fa-paper-plane"></i> Share Note
             </button>
-          </div>
-          <div class="char-counter">
-            <span id="charCount">0</span>/500 characters
           </div>
         </form>
       </div>
@@ -616,8 +435,8 @@
           <h2>Shared Notes</h2>
           <div class="notes-count">Loading...</div>
           <div class="sort-options">
-            <button class="sort-btn active" data-sort="newest">Newest First</button>
-            <button class="sort-btn" data-sort="oldest">Oldest First</button>
+            <button class="sort-btn active" data-sort="newest">Newest</button>
+            <button class="sort-btn" data-sort="oldest">Oldest</button>
           </div>
         </div>
         
@@ -628,22 +447,18 @@
         </div>
       </div>
     </div>
+
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <span id="statusText">Connected to Firebase</span>
+    </div>
   </div>
 
-  <div id="notification" class="notification">
-    <i class="fas fa-check-circle"></i>
-    <span id="notification-text">Note added successfully!</span>
-  </div>
-
-  <!-- Firebase SDK with optimized loading -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   
   <script>
-    // Performance monitoring
-    const startTime = performance.now();
-    let notesLoaded = false;
-
     // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
@@ -658,8 +473,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Performance optimizations
-    // Enable persistence for offline support and faster loads
+    // Enable persistence for offline support
     db.enablePersistence()
       .catch((err) => {
         console.log("Persistence failed: ", err);
@@ -672,45 +486,18 @@
     const notesDiv = document.getElementById("notes");
     const notesCount = document.querySelector(".notes-count");
     const sortButtons = document.querySelectorAll(".sort-btn");
-    const notification = document.getElementById("notification");
-    const notificationText = document.getElementById("notification-text");
     const charCount = document.getElementById("charCount");
-    const performanceIndicator = document.getElementById("performanceIndicator");
-    const loadTime = document.getElementById("loadTime");
+    const statusText = document.getElementById("statusText");
 
     // App State
     let currentSort = "newest";
     let notes = [];
     let unsubscribe = null;
 
-    // Debounce function for performance
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    }
-
     // Character counter
     noteInput.addEventListener('input', () => {
       charCount.textContent = noteInput.value.length;
     });
-
-    // Show notification
-    function showNotification(message, type = "success") {
-      notificationText.textContent = message;
-      notification.className = `notification ${type}`;
-      notification.classList.add("show");
-      
-      setTimeout(() => {
-        notification.classList.remove("show");
-      }, 3000);
-    }
 
     // Format date
     function formatDate(timestamp) {
@@ -721,13 +508,13 @@
       const diffInSeconds = Math.floor((now - date) / 1000);
       
       if (diffInSeconds < 60) return "Just now";
-      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
       
       return date.toLocaleDateString();
     }
 
-    // Add Note with optimization
+    // Add Note
     noteForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const note = noteInput.value.trim();
@@ -738,13 +525,6 @@
           // Add pulse animation to button
           const submitBtn = noteForm.querySelector('button');
           submitBtn.classList.add('pulse');
-          
-          // Optimized note addition - no need to wait for full response
-          const addNotePromise = db.collection("notes").add({
-            text: note,
-            author: author,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-          });
           
           // Optimistic UI update - add note immediately to UI
           const tempId = 'temp_' + Date.now();
@@ -763,30 +543,26 @@
           authorInput.value = "";
           charCount.textContent = "0";
           
-          // Wait for Firebase response in background
-          addNotePromise
-            .then(() => {
-              showNotification("Note added successfully!");
-            })
-            .catch(error => {
-              console.error("Error adding note: ", error);
-              // Remove optimistic update if failed
-              notes = notes.filter(note => note.id !== tempId);
-              renderNotes(notes);
-              showNotification("Error adding note. Please try again.", "error");
-            })
-            .finally(() => {
-              submitBtn.classList.remove('pulse');
-            });
+          // Add to Firebase
+          await db.collection("notes").add({
+            text: note,
+            author: author,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          
+          // Remove pulse animation
+          submitBtn.classList.remove('pulse');
           
         } catch (error) {
           console.error("Error adding note: ", error);
-          showNotification("Error adding note. Please try again.", "error");
+          // Remove optimistic update if failed
+          notes = notes.filter(note => note.id !== tempId);
+          renderNotes(notes);
         }
       }
     });
 
-    // Delete Note with optimization
+    // Delete Note
     async function deleteNote(id) {
       if (confirm("Are you sure you want to delete this note?")) {
         try {
@@ -798,7 +574,6 @@
             
             // Try to delete from Firebase
             await db.collection("notes").doc(id).delete();
-            showNotification("Note deleted successfully!");
           }
         } catch (error) {
           console.error("Error deleting note: ", error);
@@ -807,7 +582,6 @@
             notes.splice(noteIndex, 0, deletedNote);
             renderNotes(notes);
           }
-          showNotification("Error deleting note. Please try again.", "error");
         }
       }
     }
@@ -826,8 +600,8 @@
       });
     }
 
-    // Render notes with optimization
-    const renderNotes = debounce((notesToRender) => {
+    // Render notes
+    function renderNotes(notesToRender) {
       if (notesToRender.length === 0) {
         notesDiv.innerHTML = `
           <div class="empty-state">
@@ -847,7 +621,7 @@
       
       sortedNotes.forEach(note => {
         const noteElement = document.createElement('div');
-        noteElement.className = 'note note-enter optimized-note';
+        noteElement.className = 'note';
         noteElement.setAttribute('data-id', note.id);
         
         noteElement.innerHTML = `
@@ -859,7 +633,7 @@
             </div>
             <div class="note-actions">
               <button class="btn btn-danger btn-small" onclick="deleteNote('${note.id}')">
-                <i class="fas fa-trash"></i>
+                <i class="fas fa-trash"></i> Delete
               </button>
             </div>
           </div>
@@ -873,22 +647,7 @@
       notesDiv.appendChild(fragment);
       
       notesCount.textContent = `${notesToRender.length} ${notesToRender.length === 1 ? 'note' : 'notes'}`;
-      
-      // Update performance indicator after first render
-      if (!notesLoaded) {
-        notesLoaded = true;
-        const loadDuration = performance.now() - startTime;
-        loadTime.textContent = `Loaded in ${Math.round(loadDuration)}ms`;
-        
-        // Hide performance indicator after 5 seconds
-        setTimeout(() => {
-          performanceIndicator.style.opacity = '0';
-          setTimeout(() => {
-            performanceIndicator.style.display = 'none';
-          }, 500);
-        }, 5000);
-      }
-    }, 50); // 50ms debounce
+    }
 
     // Set up sorting
     sortButtons.forEach(button => {
@@ -902,26 +661,29 @@
       });
     });
 
-    // Show Notes in Real-time with optimization
-    // Limit the number of notes fetched for performance
+    // Show Notes in Real-time
     unsubscribe = db.collection("notes")
       .orderBy("timestamp", "desc")
-      .limit(50) // Limit to 50 most recent notes for performance
+      .limit(50)
       .onSnapshot(snapshot => {
         notes = [];
         snapshot.forEach(doc => {
           notes.push({ id: doc.id, ...doc.data() });
         });
         renderNotes(notes);
+        
+        // Update status
+        statusText.textContent = `Live updates active • ${notes.length} notes`;
       }, error => {
         console.error("Error fetching notes: ", error);
         notesDiv.innerHTML = `
           <div class="empty-state">
             <i class="fas fa-exclamation-triangle"></i>
-            <h3>Error loading notes</h3>
-            <p>Please check your connection and try again.</p>
+            <h3>Connection issue</h3>
+            <p>Notes will appear when connection is restored</p>
           </div>
         `;
+        statusText.textContent = "Offline - reconnecting...";
       });
 
     // Clean up on page unload
