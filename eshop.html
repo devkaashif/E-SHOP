@@ -1,613 +1,524 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShopEasy - Online Shopping</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Firebase Note Sharing</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --secondary: #7209b7;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --success: #4cc9f0;
+      --danger: #f72585;
+      --warning: #f8961e;
+      --gray: #6c757d;
+      --gray-light: #e9ecef;
+      --border-radius: 8px;
+      --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+    }
 
-        body {
-            background-color: #f5f5f5;
-            color: #333;
-        }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        /* Header Styles */
-        header {
-            background-color: #232f3e;
-            color: white;
-            padding: 15px 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      color: var(--dark);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+    }
 
-        .logo {
-            font-size: 28px;
-            font-weight: bold;
-            color: #ff9900;
-            text-decoration: none;
-        }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      width: 100%;
+    }
 
-        .logo span {
-            color: white;
-        }
+    h1 {
+      color: var(--primary);
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
 
-        .search-bar {
-            display: flex;
-            flex: 1;
-            max-width: 600px;
-            margin: 0 20px;
-        }
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
 
-        .search-bar input {
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 4px 0 0 4px;
-            font-size: 16px;
-        }
+    .app-container {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      overflow: hidden;
+      width: 100%;
+    }
 
-        .search-bar button {
-            background-color: #ff9900;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 0 4px 4px 0;
-            cursor: pointer;
-        }
+    .form-container {
+      padding: 25px;
+      border-bottom: 1px solid var(--gray-light);
+      background: var(--light);
+    }
 
-        .nav-links {
-            display: flex;
-            align-items: center;
-        }
+    #noteForm {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
 
-        .nav-links a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-            font-size: 14px;
-        }
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
 
-        .nav-links i {
-            margin-right: 5px;
-        }
+    input, textarea {
+      padding: 12px 15px;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--gray-light);
+      font-size: 1rem;
+      transition: var(--transition);
+      flex: 1;
+    }
 
-        .cart-count {
-            background-color: #ff9900;
-            color: #232f3e;
-            border-radius: 50%;
-            padding: 2px 6px;
-            font-size: 12px;
-            margin-left: 5px;
-        }
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+      font-family: inherit;
+    }
 
-        /* Navigation Styles */
-        .category-nav {
-            background-color: #37475a;
-            padding: 10px 0;
-        }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+    }
 
-        .category-nav ul {
-            display: flex;
-            justify-content: center;
-            list-style: none;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+    .btn {
+      padding: 12px 20px;
+      border-radius: var(--border-radius);
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
 
-        .category-nav li {
-            margin: 0 15px;
-        }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
 
-        .category-nav a {
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-        }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
 
-        /* Hero Section */
-        .hero {
-            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1607082350899-7e105aa886ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');
-            background-size: cover;
-            background-position: center;
-            height: 400px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-align: center;
-            margin-bottom: 30px;
-        }
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
 
-        .hero-content h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
+    .btn-danger:hover {
+      background: #e11570;
+    }
 
-        .hero-content p {
-            font-size: 20px;
-            margin-bottom: 30px;
-        }
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
 
-        .cta-button {
-            background-color: #ff9900;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 4px;
-            font-size: 18px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
+    .notes-container {
+      padding: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
 
-        /* Products Section */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+    .notes-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--gray-light);
+    }
 
-        .section-title {
-            font-size: 28px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #ff9900;
-        }
+    .notes-count {
+      font-weight: 600;
+      color: var(--gray);
+    }
 
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
-        }
+    .sort-options {
+      display: flex;
+      gap: 10px;
+    }
 
-        .product-card {
-            background-color: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
+    .sort-btn {
+      background: none;
+      border: 1px solid var(--gray-light);
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: var(--transition);
+    }
 
-        .product-card:hover {
-            transform: translateY(-5px);
-        }
+    .sort-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
 
-        .product-image {
-            height: 200px;
-            background-color: #f5f5f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
+    .notes-list {
+      display: grid;
+      gap: 15px;
+    }
 
-        .product-image img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
+    .note {
+      background: white;
+      padding: 15px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      border-left: 4px solid var(--primary);
+      transition: var(--transition);
+      position: relative;
+    }
 
-        .product-info {
-            padding: 15px;
-        }
+    .note:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
 
-        .product-title {
-            font-size: 16px;
-            margin-bottom: 10px;
-            height: 40px;
-            overflow: hidden;
-        }
+    .note-content {
+      margin-bottom: 10px;
+      word-wrap: break-word;
+    }
 
-        .product-price {
-            font-size: 20px;
-            font-weight: bold;
-            color: #b12704;
-            margin-bottom: 10px;
-        }
+    .note-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--gray);
+    }
 
-        .product-rating {
-            color: #ffa41c;
-            margin-bottom: 10px;
-        }
+    .note-actions {
+      display: flex;
+      gap: 8px;
+    }
 
-        .add-to-cart {
-            background-color: #ff9900;
-            color: white;
-            border: none;
-            padding: 10px;
-            width: 100%;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    .note-date {
+      font-style: italic;
+    }
 
-        /* Footer */
-        footer {
-            background-color: #232f3e;
-            color: white;
-            padding: 40px 0 20px;
-        }
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray);
+    }
 
-        .footer-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 30px;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      color: var(--gray-light);
+    }
 
-        .footer-column h3 {
-            font-size: 18px;
-            margin-bottom: 20px;
-            color: #ff9900;
-        }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: var(--gray);
+    }
 
-        .footer-column ul {
-            list-style: none;
-        }
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: var(--border-radius);
+      background: white;
+      box-shadow: var(--box-shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateX(150%);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+    }
 
-        .footer-column li {
-            margin-bottom: 10px;
-        }
+    .notification.show {
+      transform: translateX(0);
+    }
 
-        .footer-column a {
-            color: #ddd;
-            text-decoration: none;
-            font-size: 14px;
-        }
+    .notification.success {
+      border-left: 4px solid var(--success);
+    }
 
-        .footer-column a:hover {
-            text-decoration: underline;
-        }
+    .notification.error {
+      border-left: 4px solid var(--danger);
+    }
 
-        .copyright {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #37475a;
-            font-size: 14px;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .header-container {
-                flex-direction: column;
-            }
-
-            .search-bar {
-                margin: 15px 0;
-                max-width: 100%;
-            }
-
-            .nav-links {
-                margin-top: 10px;
-            }
-
-            .category-nav ul {
-                flex-wrap: wrap;
-            }
-
-            .category-nav li {
-                margin: 5px 10px;
-            }
-
-            .hero-content h1 {
-                font-size: 36px;
-            }
-
-            .hero-content p {
-                font-size: 16px;
-            }
-        }
-    </style>
+    @media (max-width: 768px) {
+      .input-group {
+        flex-direction: column;
+      }
+      
+      .notes-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .sort-options {
+        align-self: flex-end;
+      }
+    }
+  </style>
 </head>
 <body>
-    <!-- Header -->
+  <div class="container">
     <header>
-        <div class="header-container">
-            <a href="#" class="logo">Shop<span>Easy</span></a>
-            
-            <div class="search-bar">
-                <input type="text" placeholder="Search for products, brands and more">
-                <button><i class="fas fa-search"></i></button>
-            </div>
-            
-            <div class="nav-links">
-                <a href="#"><i class="fas fa-user"></i> Account</a>
-                <a href="#"><i class="fas fa-shopping-cart"></i> Cart <span class="cart-count">3</span></a>
-            </div>
-        </div>
+      <h1><i class="fas fa-sticky-note"></i> Firebase Note Sharing</h1>
+      <p class="subtitle">Share notes in real-time with anyone, anywhere</p>
     </header>
-
-    <!-- Category Navigation -->
-    <nav class="category-nav">
-        <ul>
-            <li><a href="#">Electronics</a></li>
-            <li><a href="#">Fashion</a></li>
-            <li><a href="#">Home & Kitchen</a></li>
-            <li><a href="#">Beauty</a></li>
-            <li><a href="#">Sports</a></li>
-            <li><a href="#">Books</a></li>
-            <li><a href="#">Toys</a></li>
-        </ul>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-content">
-            <h1>Biggest Sale of the Year!</h1>
-            <p>Up to 70% off on electronics, fashion, home appliances and more</p>
-            <a href="#" class="cta-button">Shop Now</a>
+    
+    <div class="app-container">
+      <div class="form-container">
+        <form id="noteForm">
+          <textarea id="noteInput" placeholder="Write your note here..." required></textarea>
+          <div class="input-group">
+            <input type="text" id="authorInput" placeholder="Your name (optional)">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i> Add Note
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      <div class="notes-container">
+        <div class="notes-header">
+          <h2>Shared Notes</h2>
+          <div class="notes-count">Loading...</div>
+          <div class="sort-options">
+            <button class="sort-btn active" data-sort="newest">Newest First</button>
+            <button class="sort-btn" data-sort="oldest">Oldest First</button>
+          </div>
         </div>
-    </section>
-
-    <!-- Main Content -->
-    <main class="container">
-        <!-- Featured Products -->
-        <section class="featured-products">
-            <h2 class="section-title">Featured Products</h2>
-            <div class="products-grid">
-                <!-- Product 1 -->
-                <div class="product-card">
-                    <div class="product-image">
-                        <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Wireless Headphones">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Wireless Bluetooth Headphones with Noise Cancellation</h3>
-                        <div class="product-rating">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star-half-alt"></i>
-                            <span>(4.5)</span>
-                        </div>
-                        <div class="product-price">$89.99</div>
-                        <button class="add-to-cart">Add to Cart</button>
-                    </div>
-                </div>
-
-                <!-- Product 2 -->
-                <div class="product-card">
-                    <div class="product-image">
-                        <img src="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Smart Watch">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Smart Watch with Fitness Tracker and Heart Rate Monitor</h3>
-                        <div class="product-rating">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="far fa-star"></i>
-                            <span>(4.0)</span>
-                        </div>
-                        <div class="product-price">$149.99</div>
-                        <button class="add-to-cart">Add to Cart</button>
-                    </div>
-                </div>
-
-                <!-- Product 3 -->
-                <div class="product-card">
-                    <div class="product-image">
-                        <img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1064&q=80" alt="Smartphone">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Latest Smartphone with Triple Camera and 128GB Storage</h3>
-                        <div class="product-rating">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <span>(5.0)</span>
-                        </div>
-                        <div class="product-price">$699.99</div>
-                        <button class="add-to-cart">Add to Cart</button>
-                    </div>
-                </div>
-
-                <!-- Product 4 -->
-                <div class="product-card">
-                    <div class="product-image">
-                        <img src="https://images.unsplash.com/photo-1560769629-975ec94e6a86?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1064&q=80" alt="Running Shoes">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Men's Running Shoes with Cushioning and Breathable Mesh</h3>
-                        <div class="product-rating">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star-half-alt"></i>
-                            <span>(4.5)</span>
-                        </div>
-                        <div class="product-price">$79.99</div>
-                        <button class="add-to-cart">Add to Cart</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Deals of the Day -->
-        <section class="deals">
-            <h2 class="section-title">Deals of the Day</h2>
-            <div class="products-grid">
-                <!-- Product 5 -->
-                <div class="product-card">
-                    <div class="product-image">
-                        <img src="https://images.unsplash.com/photo-1531297484001-80022131f5a1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1120&q=80" alt="Laptop">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Gaming Laptop with 16GB RAM and 1TB SSD</h3>
-                        <div class="product-rating">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="far fa-star"></i>
-                            <span>(4.0)</span>
-                        </div>
-                        <div class="product-price">$1,299.99 <span style="text-decoration: line-through; color: #777; font-size: 16px;">$1,599.99</span></div>
-                        <button class="add-to-cart">Add to Cart</button>
-                    </div>
-                </div>
-
-                <!-- Product 6 -->
-                <div class="product-card">
-                    <div class="product-image">
-                        <img src="https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1169&q=80" alt="Gaming Console">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Next-Gen Gaming Console with 4K Gaming</h3>
-                        <div class="product-rating">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star-half-alt"></i>
-                            <span>(4.5)</span>
-                        </div>
-                        <div class="product-price">$499.99</div>
-                        <button class="add-to-cart">Add to Cart</button>
-                    </div>
-                </div>
-
-                <!-- Product 7 -->
-                <div class="product-card">
-                    <div class="product-image">
-                        <img src="https://images.unsplash.com/photo-1524805444758-089113d48a6d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=688&q=80" alt="Smart TV">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">55-inch 4K Smart TV with HDR and Voice Control</h3>
-                        <div class="product-rating">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <span>(5.0)</span>
-                        </div>
-                        <div class="product-price">$599.99 <span style="text-decoration: line-through; color: #777; font-size: 16px;">$799.99</span></div>
-                        <button class="add-to-cart">Add to Cart</button>
-                    </div>
-                </div>
-
-                <!-- Product 8 -->
-                <div class="product-card">
-                    <div class="product-image">
-                        <img src="https://images.unsplash.com/photo-1543512214-318c7553f230?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80" alt="Wireless Earbuds">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">True Wireless Earbuds with Charging Case</h3>
-                        <div class="product-rating">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="far fa-star"></i>
-                            <span>(4.0)</span>
-                        </div>
-                        <div class="product-price">$59.99</div>
-                        <button class="add-to-cart">Add to Cart</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer>
-        <div class="footer-content">
-            <div class="footer-column">
-                <h3>Get to Know Us</h3>
-                <ul>
-                    <li><a href="#">About Us</a></li>
-                    <li><a href="#">Careers</a></li>
-                    <li><a href="#">Press Releases</a></li>
-                    <li><a href="#">ShopEasy Science</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h3>Connect with Us</h3>
-                <ul>
-                    <li><a href="#">Facebook</a></li>
-                    <li><a href="#">Twitter</a></li>
-                    <li><a href="#">Instagram</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h3>Make Money with Us</h3>
-                <ul>
-                    <li><a href="#">Sell on ShopEasy</a></li>
-                    <li><a href="#">Become an Affiliate</a></li>
-                    <li><a href="#">Advertise Your Products</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h3>Let Us Help You</h3>
-                <ul>
-                    <li><a href="#">Your Account</a></li>
-                    <li><a href="#">Returns Centre</a></li>
-                    <li><a href="#">100% Purchase Protection</a></li>
-                    <li><a href="#">Help</a></li>
-                </ul>
-            </div>
+        
+        <div id="notes" class="notes-list">
+          <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading notes...
+          </div>
         </div>
-        <div class="copyright">
-            <p>&copy; 2023 E-SHOP.com by 'Kaashif' All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="notification" class="notification">
+    <i class="fas fa-check-circle"></i>
+    <span id="notification-text">Note added successfully!</span>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  
+  <script>
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
+      authDomain: "poplol-7209f.firebaseapp.com",
+      projectId: "poplol-7209f",
+      storageBucket: "poplol-7209f.appspot.com",
+      messagingSenderId: "105810834",
+      appId: "1:105810834:web:example"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // DOM Elements
+    const noteForm = document.getElementById("noteForm");
+    const noteInput = document.getElementById("noteInput");
+    const authorInput = document.getElementById("authorInput");
+    const notesDiv = document.getElementById("notes");
+    const notesCount = document.querySelector(".notes-count");
+    const sortButtons = document.querySelectorAll(".sort-btn");
+    const notification = document.getElementById("notification");
+    const notificationText = document.getElementById("notification-text");
+
+    // App State
+    let currentSort = "newest";
+
+    // Show notification
+    function showNotification(message, type = "success") {
+      notificationText.textContent = message;
+      notification.className = `notification ${type}`;
+      notification.classList.add("show");
+      
+      setTimeout(() => {
+        notification.classList.remove("show");
+      }, 3000);
+    }
+
+    // Format date
+    function formatDate(timestamp) {
+      if (!timestamp) return "Just now";
+      
+      const date = timestamp.toDate();
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - date) / 1000);
+      
+      if (diffInSeconds < 60) return "Just now";
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+      
+      return date.toLocaleDateString();
+    }
+
+    // Add Note
+    noteForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const note = noteInput.value.trim();
+      const author = authorInput.value.trim() || "Anonymous";
+      
+      if (note) {
+        try {
+          await db.collection("notes").add({
+            text: note,
+            author: author,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          
+          noteInput.value = "";
+          authorInput.value = "";
+          showNotification("Note added successfully!");
+        } catch (error) {
+          console.error("Error adding note: ", error);
+          showNotification("Error adding note. Please try again.", "error");
+        }
+      }
+    });
+
+    // Delete Note
+    async function deleteNote(id) {
+      if (confirm("Are you sure you want to delete this note?")) {
+        try {
+          await db.collection("notes").doc(id).delete();
+          showNotification("Note deleted successfully!");
+        } catch (error) {
+          console.error("Error deleting note: ", error);
+          showNotification("Error deleting note. Please try again.", "error");
+        }
+      }
+    }
+
+    // Sort notes
+    function sortNotes(notes, sortBy) {
+      return notes.sort((a, b) => {
+        const aTime = a.timestamp ? a.timestamp.toDate().getTime() : 0;
+        const bTime = b.timestamp ? b.timestamp.toDate().getTime() : 0;
+        
+        if (sortBy === "newest") {
+          return bTime - aTime;
+        } else {
+          return aTime - bTime;
+        }
+      });
+    }
+
+    // Render notes
+    function renderNotes(notes) {
+      if (notes.length === 0) {
+        notesDiv.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-sticky-note"></i>
+            <h3>No notes yet</h3>
+            <p>Be the first to share a note!</p>
+          </div>
+        `;
+        notesCount.textContent = "0 notes";
+        return;
+      }
+      
+      const sortedNotes = sortNotes([...notes], currentSort);
+      
+      notesDiv.innerHTML = sortedNotes.map(note => `
+        <div class="note">
+          <div class="note-content">${note.text}</div>
+          <div class="note-meta">
+            <div>
+              <span class="note-author">By ${note.author}</span>
+              <span class="note-date"> • ${formatDate(note.timestamp)}</span>
+            </div>
+            <div class="note-actions">
+              <button class="btn btn-danger btn-small" onclick="deleteNote('${note.id}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
         </div>
-    </footer>
+      `).join('');
+      
+      notesCount.textContent = `${notes.length} ${notes.length === 1 ? 'note' : 'notes'}`;
+    }
 
-    <script>
-        // Simple cart functionality
-        document.querySelectorAll('.add-to-cart').forEach(button => {
-            button.addEventListener('click', function() {
-                const productCard = this.closest('.product-card');
-                const productTitle = productCard.querySelector('.product-title').textContent;
-                const productPrice = productCard.querySelector('.product-price').textContent;
-                
-                // Update cart count
-                const cartCount = document.querySelector('.cart-count');
-                cartCount.textContent = parseInt(cartCount.textContent) + 1;
-                
-                // Show confirmation
-                alert(`Added to cart: ${productTitle}\nPrice: ${productPrice}`);
-            });
+    // Set up sorting
+    sortButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        sortButtons.forEach(btn => btn.classList.remove("active"));
+        button.classList.add("active");
+        currentSort = button.dataset.sort;
+        
+        // Re-render notes with new sort
+        db.collection("notes").get().then(snapshot => {
+          const notes = [];
+          snapshot.forEach(doc => {
+            notes.push({ id: doc.id, ...doc.data() });
+          });
+          renderNotes(notes);
         });
+      });
+    });
 
-        // Search functionality
-        document.querySelector('.search-bar button').addEventListener('click', function() {
-            const searchTerm = document.querySelector('.search-bar input').value;
-            if (searchTerm.trim() !== '') {
-                alert(`Searching for: ${searchTerm}`);
-            }
-        });
-
-        // Enter key for search
-        document.querySelector('.search-bar input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.querySelector('.search-bar button').click();
-            }
-        });
-    </script>
+    // Show Notes in Real-time
+    db.collection("notes").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+      const notes = [];
+      snapshot.forEach(doc => {
+        notes.push({ id: doc.id, ...doc.data() });
+      });
+      renderNotes(notes);
+    }, error => {
+      console.error("Error fetching notes: ", error);
+      notesDiv.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>Error loading notes</h3>
+          <p>Please check your connection and try again.</p>
+        </div>
+      `;
+    });
+  </script>
 </body>
 </html>
