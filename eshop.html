@@ -49,7 +49,7 @@
 
     .container {
       width: 100%;
-      max-width: 1100px;
+      max-width: 900px;
       margin: 0 auto;
       animation: fadeIn 0.8s ease-out;
     }
@@ -118,29 +118,18 @@
     }
 
     .app-container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-    }
-
-    @media (max-width: 900px) {
-      .app-container {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .panel {
       background: white;
       border-radius: var(--border-radius);
       box-shadow: var(--box-shadow);
       overflow: hidden;
+      width: 100%;
       transform: translateY(0);
       transition: var(--transition);
       position: relative;
       z-index: 1;
     }
 
-    .panel:hover {
+    .app-container:hover {
       box-shadow: var(--box-shadow-lg);
       transform: translateY(-5px);
     }
@@ -242,17 +231,6 @@
       box-shadow: 0 8px 20px rgba(108, 99, 255, 0.4);
     }
 
-    .btn-secondary {
-      background: var(--gray-light);
-      color: var(--dark);
-    }
-
-    .btn-secondary:hover {
-      background: var(--gray);
-      color: white;
-      transform: translateY(-2px);
-    }
-
     .btn-danger {
       background: var(--danger);
       color: white;
@@ -268,31 +246,28 @@
       font-size: 0.85rem;
     }
 
-    .notes-container, .files-container {
+    .notes-container {
       padding: 30px;
       max-height: 500px;
       overflow-y: auto;
       position: relative;
     }
 
-    .notes-container::-webkit-scrollbar,
-    .files-container::-webkit-scrollbar {
+    .notes-container::-webkit-scrollbar {
       width: 6px;
     }
 
-    .notes-container::-webkit-scrollbar-track,
-    .files-container::-webkit-scrollbar-track {
+    .notes-container::-webkit-scrollbar-track {
       background: var(--gray-light);
       border-radius: 10px;
     }
 
-    .notes-container::-webkit-scrollbar-thumb,
-    .files-container::-webkit-scrollbar-thumb {
+    .notes-container::-webkit-scrollbar-thumb {
       background: var(--primary);
       border-radius: 10px;
     }
 
-    .section-header {
+    .notes-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -301,7 +276,7 @@
       border-bottom: 1px solid var(--gray-light);
     }
 
-    .section-count {
+    .notes-count {
       font-weight: 600;
       color: var(--gray);
       background: var(--gray-light);
@@ -337,12 +312,12 @@
       color: var(--primary);
     }
 
-    .notes-list, .files-list {
+    .notes-list {
       display: grid;
       gap: 20px;
     }
 
-    .note, .file-item {
+    .note {
       background: white;
       padding: 20px;
       border-radius: var(--border-radius-sm);
@@ -354,11 +329,7 @@
       animation: slideIn 0.5s ease-out;
     }
 
-    .file-item {
-      border-left-color: var(--accent);
-    }
-
-    .note::before, .file-item::before {
+    .note::before {
       content: '';
       position: absolute;
       top: 0;
@@ -371,12 +342,12 @@
       z-index: -1;
     }
 
-    .note:hover, .file-item:hover {
+    .note:hover {
       transform: translateY(-5px);
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
 
-    .note:hover::before, .file-item:hover::before {
+    .note:hover::before {
       opacity: 0.03;
     }
 
@@ -386,7 +357,7 @@
       line-height: 1.7;
     }
 
-    .note-meta, .file-meta {
+    .note-meta {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -394,56 +365,18 @@
       color: var(--gray);
     }
 
-    .note-actions, .file-actions {
+    .note-actions {
       display: flex;
       gap: 8px;
     }
 
-    .note-date, .file-date {
+    .note-date {
       font-style: italic;
     }
 
-    .note-author, .file-author {
+    .note-author {
       font-weight: 500;
       color: var(--primary);
-    }
-
-    .file-author {
-      color: var(--accent);
-    }
-
-    .file-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 15px;
-    }
-
-    .file-icon {
-      width: 50px;
-      height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--gray-light);
-      border-radius: var(--border-radius-sm);
-      font-size: 1.5rem;
-      color: var(--primary);
-    }
-
-    .file-details {
-      flex: 1;
-    }
-
-    .file-name {
-      font-weight: 600;
-      margin-bottom: 5px;
-      word-break: break-all;
-    }
-
-    .file-size {
-      color: var(--gray);
-      font-size: 0.85rem;
     }
 
     .empty-state {
@@ -560,7 +493,7 @@
       animation-duration: 18s;
     }
 
-    .note-enter, .file-enter {
+    .note-enter {
       animation: noteSlideIn 0.5s ease-out;
     }
 
@@ -575,7 +508,7 @@
       }
     }
 
-    .note-exit, .file-exit {
+    .note-exit {
       animation: noteSlideOut 0.3s ease-in;
     }
 
@@ -590,74 +523,16 @@
       }
     }
 
-    .upload-area {
-      border: 2px dashed var(--gray-light);
-      border-radius: var(--border-radius-sm);
-      padding: 30px;
-      text-align: center;
-      transition: var(--transition);
-      margin-bottom: 20px;
-      cursor: pointer;
-    }
-
-    .upload-area:hover, .upload-area.drag-over {
-      border-color: var(--primary);
-      background: rgba(108, 99, 255, 0.05);
-    }
-
-    .upload-area i {
-      font-size: 3rem;
-      color: var(--primary);
-      margin-bottom: 15px;
-    }
-
-    .upload-text {
-      margin-bottom: 15px;
-    }
-
-    .file-input {
-      display: none;
-    }
-
-    .upload-btn {
-      display: inline-block;
-    }
-
-    .file-preview {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 15px;
-    }
-
-    .preview-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--gray-light);
+    .performance-indicator {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
       padding: 8px 12px;
       border-radius: 20px;
-      font-size: 0.85rem;
-    }
-
-    .preview-item i {
-      cursor: pointer;
-      color: var(--danger);
-    }
-
-    .progress-bar {
-      height: 6px;
-      background: var(--gray-light);
-      border-radius: 3px;
-      margin-top: 10px;
-      overflow: hidden;
-    }
-
-    .progress {
-      height: 100%;
-      background: var(--primary);
-      width: 0%;
-      transition: width 0.3s ease;
+      font-size: 0.8rem;
+      z-index: 1000;
     }
 
     @media (max-width: 768px) {
@@ -665,7 +540,7 @@
         flex-direction: column;
       }
       
-      .section-header {
+      .notes-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
@@ -676,13 +551,13 @@
         justify-content: space-between;
       }
       
-      .note-meta, .file-meta {
+      .note-meta {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
       }
       
-      .note-actions, .file-actions {
+      .note-actions {
         align-self: flex-end;
       }
       
@@ -695,31 +570,8 @@
       animation: pulse 2s infinite;
     }
 
-    .tab-container {
-      display: flex;
-      border-bottom: 1px solid var(--gray-light);
-      margin-bottom: 20px;
-    }
-
-    .tab {
-      padding: 12px 24px;
-      cursor: pointer;
-      transition: var(--transition);
-      border-bottom: 3px solid transparent;
-      font-weight: 500;
-    }
-
-    .tab.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
+    .optimized-note {
+      will-change: transform, opacity;
     }
   </style>
 </head>
@@ -731,88 +583,47 @@
     <div class="floating-element"></div>
   </div>
 
+  <div class="performance-indicator" id="performanceIndicator">
+    <i class="fas fa-bolt"></i> <span id="loadTime">Loading...</span>
+  </div>
+
   <div class="container">
     <header>
       <div class="header-bg"></div>
-      <h1><i class="fas fa-sticky-note"></i> Firebase Note & File Sharing</h1>
-      <p class="subtitle">Share notes and files in real-time with beautiful animations</p>
+      <h1><i class="fas fa-sticky-note"></i> Firebase Note Sharing</h1>
+      <p class="subtitle">Fast, optimized note sharing with real-time updates</p>
     </header>
     
     <div class="app-container">
-      <!-- Notes Panel -->
-      <div class="panel">
-        <div class="form-container">
-          <div class="form-bg"></div>
-          <form id="noteForm">
-            <textarea id="noteInput" placeholder="Write your note here..." required></textarea>
-            <div class="input-group">
-              <input type="text" id="authorInput" placeholder="Your name (optional)">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Add Note
-              </button>
-            </div>
-          </form>
-        </div>
-        
-        <div class="notes-container">
-          <div class="section-header">
-            <h2>Shared Notes</h2>
-            <div class="notes-count">Loading...</div>
-            <div class="sort-options">
-              <button class="sort-btn active" data-sort="newest">Newest First</button>
-              <button class="sort-btn" data-sort="oldest">Oldest First</button>
-            </div>
-          </div>
-          
-          <div id="notes" class="notes-list">
-            <div class="loading">
-              <i class="fas fa-spinner fa-spin"></i> Loading notes...
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Files Panel -->
-      <div class="panel">
-        <div class="form-container">
-          <div class="form-bg"></div>
-          <div class="upload-area" id="uploadArea">
-            <i class="fas fa-cloud-upload-alt"></i>
-            <div class="upload-text">
-              <h3>Drag & Drop Files Here</h3>
-              <p>or click to browse files (Max: 10MB)</p>
-            </div>
-            <input type="file" id="fileInput" class="file-input" multiple>
-            <button class="btn btn-secondary upload-btn" onclick="document.getElementById('fileInput').click()">
-              <i class="fas fa-folder-open"></i> Select Files
-            </button>
-            <div class="file-preview" id="filePreview"></div>
-            <div class="progress-bar" id="progressBar">
-              <div class="progress" id="progress"></div>
-            </div>
-          </div>
+      <div class="form-container">
+        <div class="form-bg"></div>
+        <form id="noteForm">
+          <textarea id="noteInput" placeholder="Write your note here..." required maxlength="500"></textarea>
           <div class="input-group">
-            <input type="text" id="fileAuthorInput" placeholder="Your name (optional)">
-            <button type="button" class="btn btn-primary" id="uploadFilesBtn">
-              <i class="fas fa-upload"></i> Upload Files
+            <input type="text" id="authorInput" placeholder="Your name (optional)" maxlength="30">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i> Add Note
             </button>
+          </div>
+          <div class="char-counter">
+            <span id="charCount">0</span>/500 characters
+          </div>
+        </form>
+      </div>
+      
+      <div class="notes-container">
+        <div class="notes-header">
+          <h2>Shared Notes</h2>
+          <div class="notes-count">Loading...</div>
+          <div class="sort-options">
+            <button class="sort-btn active" data-sort="newest">Newest First</button>
+            <button class="sort-btn" data-sort="oldest">Oldest First</button>
           </div>
         </div>
         
-        <div class="files-container">
-          <div class="section-header">
-            <h2>Shared Files</h2>
-            <div class="files-count">Loading...</div>
-            <div class="sort-options">
-              <button class="sort-btn active" data-sort="newest">Newest First</button>
-              <button class="sort-btn" data-sort="oldest">Oldest First</button>
-            </div>
-          </div>
-          
-          <div id="files" class="files-list">
-            <div class="loading">
-              <i class="fas fa-spinner fa-spin"></i> Loading files...
-            </div>
+        <div id="notes" class="notes-list">
+          <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading notes...
           </div>
         </div>
       </div>
@@ -824,12 +635,15 @@
     <span id="notification-text">Note added successfully!</span>
   </div>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase SDK with optimized loading -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
   
   <script>
+    // Performance monitoring
+    const startTime = performance.now();
+    let notesLoaded = false;
+
     // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
@@ -843,7 +657,13 @@
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const storage = firebase.storage();
+
+    // Performance optimizations
+    // Enable persistence for offline support and faster loads
+    db.enablePersistence()
+      .catch((err) => {
+        console.log("Persistence failed: ", err);
+      });
 
     // DOM Elements
     const noteForm = document.getElementById("noteForm");
@@ -851,47 +671,35 @@
     const authorInput = document.getElementById("authorInput");
     const notesDiv = document.getElementById("notes");
     const notesCount = document.querySelector(".notes-count");
-    const filesDiv = document.getElementById("files");
-    const filesCount = document.querySelector(".files-count");
     const sortButtons = document.querySelectorAll(".sort-btn");
     const notification = document.getElementById("notification");
     const notificationText = document.getElementById("notification-text");
-    const uploadArea = document.getElementById("uploadArea");
-    const fileInput = document.getElementById("fileInput");
-    const filePreview = document.getElementById("filePreview");
-    const progressBar = document.getElementById("progressBar");
-    const progress = document.getElementById("progress");
-    const fileAuthorInput = document.getElementById("fileAuthorInput");
-    const uploadFilesBtn = document.getElementById("uploadFilesBtn");
+    const charCount = document.getElementById("charCount");
+    const performanceIndicator = document.getElementById("performanceIndicator");
+    const loadTime = document.getElementById("loadTime");
 
     // App State
     let currentSort = "newest";
     let notes = [];
-    let files = [];
-    let selectedFiles = [];
+    let unsubscribe = null;
 
-    // File type icons mapping
-    const fileTypeIcons = {
-      'pdf': 'fa-file-pdf',
-      'doc': 'fa-file-word',
-      'docx': 'fa-file-word',
-      'xls': 'fa-file-excel',
-      'xlsx': 'fa-file-excel',
-      'ppt': 'fa-file-powerpoint',
-      'pptx': 'fa-file-powerpoint',
-      'zip': 'fa-file-archive',
-      'rar': 'fa-file-archive',
-      'jpg': 'fa-file-image',
-      'jpeg': 'fa-file-image',
-      'png': 'fa-file-image',
-      'gif': 'fa-file-image',
-      'mp3': 'fa-file-audio',
-      'wav': 'fa-file-audio',
-      'mp4': 'fa-file-video',
-      'avi': 'fa-file-video',
-      'txt': 'fa-file-alt',
-      'default': 'fa-file'
-    };
+    // Debounce function for performance
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Character counter
+    noteInput.addEventListener('input', () => {
+      charCount.textContent = noteInput.value.length;
+    });
 
     // Show notification
     function showNotification(message, type = "success") {
@@ -919,22 +727,7 @@
       return date.toLocaleDateString();
     }
 
-    // Format file size
-    function formatFileSize(bytes) {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // Get file icon
-    function getFileIcon(filename) {
-      const extension = filename.split('.').pop().toLowerCase();
-      return fileTypeIcons[extension] || fileTypeIcons['default'];
-    }
-
-    // Add Note
+    // Add Note with optimization
     noteForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const note = noteInput.value.trim();
@@ -946,20 +739,46 @@
           const submitBtn = noteForm.querySelector('button');
           submitBtn.classList.add('pulse');
           
-          await db.collection("notes").add({
+          // Optimized note addition - no need to wait for full response
+          const addNotePromise = db.collection("notes").add({
             text: note,
             author: author,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
           
+          // Optimistic UI update - add note immediately to UI
+          const tempId = 'temp_' + Date.now();
+          const tempNote = {
+            id: tempId,
+            text: note,
+            author: author,
+            timestamp: null
+          };
+          
+          notes.unshift(tempNote);
+          renderNotes(notes);
+          
+          // Clear form immediately for better UX
           noteInput.value = "";
           authorInput.value = "";
-          showNotification("Note added successfully!");
+          charCount.textContent = "0";
           
-          // Remove pulse animation after a delay
-          setTimeout(() => {
-            submitBtn.classList.remove('pulse');
-          }, 2000);
+          // Wait for Firebase response in background
+          addNotePromise
+            .then(() => {
+              showNotification("Note added successfully!");
+            })
+            .catch(error => {
+              console.error("Error adding note: ", error);
+              // Remove optimistic update if failed
+              notes = notes.filter(note => note.id !== tempId);
+              renderNotes(notes);
+              showNotification("Error adding note. Please try again.", "error");
+            })
+            .finally(() => {
+              submitBtn.classList.remove('pulse');
+            });
+          
         } catch (error) {
           console.error("Error adding note: ", error);
           showNotification("Error adding note. Please try again.", "error");
@@ -967,55 +786,28 @@
       }
     });
 
-    // Delete Note
+    // Delete Note with optimization
     async function deleteNote(id) {
       if (confirm("Are you sure you want to delete this note?")) {
         try {
-          // Add exit animation to note
-          const noteElement = document.querySelector(`[data-note-id="${id}"]`);
-          if (noteElement) {
-            noteElement.classList.add('note-exit');
-            setTimeout(() => {
-              if (noteElement.parentNode) {
-                noteElement.parentNode.removeChild(noteElement);
-              }
-            }, 300);
+          // Optimistic deletion - remove immediately from UI
+          const noteIndex = notes.findIndex(note => note.id === id);
+          if (noteIndex !== -1) {
+            const deletedNote = notes.splice(noteIndex, 1)[0];
+            renderNotes(notes);
+            
+            // Try to delete from Firebase
+            await db.collection("notes").doc(id).delete();
+            showNotification("Note deleted successfully!");
           }
-          
-          await db.collection("notes").doc(id).delete();
-          showNotification("Note deleted successfully!");
         } catch (error) {
           console.error("Error deleting note: ", error);
-          showNotification("Error deleting note. Please try again.", "error");
-        }
-      }
-    }
-
-    // Delete File
-    async function deleteFile(id, fileName) {
-      if (confirm("Are you sure you want to delete this file?")) {
-        try {
-          // Add exit animation to file
-          const fileElement = document.querySelector(`[data-file-id="${id}"]`);
-          if (fileElement) {
-            fileElement.classList.add('file-exit');
-            setTimeout(() => {
-              if (fileElement.parentNode) {
-                fileElement.parentNode.removeChild(fileElement);
-              }
-            }, 300);
+          // Re-add note if deletion failed
+          if (deletedNote) {
+            notes.splice(noteIndex, 0, deletedNote);
+            renderNotes(notes);
           }
-          
-          // Delete from Firestore
-          await db.collection("files").doc(id).delete();
-          
-          // Delete from Storage
-          await storage.ref().child(`files/${fileName}`).delete();
-          
-          showNotification("File deleted successfully!");
-        } catch (error) {
-          console.error("Error deleting file: ", error);
-          showNotification("Error deleting file. Please try again.", "error");
+          showNotification("Error deleting note. Please try again.", "error");
         }
       }
     }
@@ -1034,8 +826,8 @@
       });
     }
 
-    // Render notes
-    function renderNotes(notesToRender) {
+    // Render notes with optimization
+    const renderNotes = debounce((notesToRender) => {
       if (notesToRender.length === 0) {
         notesDiv.innerHTML = `
           <div class="empty-state">
@@ -1050,8 +842,15 @@
       
       const sortedNotes = sortNotes([...notesToRender], currentSort);
       
-      notesDiv.innerHTML = sortedNotes.map(note => `
-        <div class="note note-enter" data-note-id="${note.id}">
+      // Use DocumentFragment for batch DOM updates
+      const fragment = document.createDocumentFragment();
+      
+      sortedNotes.forEach(note => {
+        const noteElement = document.createElement('div');
+        noteElement.className = 'note note-enter optimized-note';
+        noteElement.setAttribute('data-id', note.id);
+        
+        noteElement.innerHTML = `
           <div class="note-content">${note.text}</div>
           <div class="note-meta">
             <div>
@@ -1064,251 +863,72 @@
               </button>
             </div>
           </div>
-        </div>
-      `).join('');
+        `;
+        
+        fragment.appendChild(noteElement);
+      });
+      
+      // Single DOM update
+      notesDiv.innerHTML = '';
+      notesDiv.appendChild(fragment);
       
       notesCount.textContent = `${notesToRender.length} ${notesToRender.length === 1 ? 'note' : 'notes'}`;
-    }
-
-    // Render files
-    function renderFiles(filesToRender) {
-      if (filesToRender.length === 0) {
-        filesDiv.innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-file"></i>
-            <h3>No files yet</h3>
-            <p>Be the first to share a file!</p>
-          </div>
-        `;
-        filesCount.textContent = "0 files";
-        return;
+      
+      // Update performance indicator after first render
+      if (!notesLoaded) {
+        notesLoaded = true;
+        const loadDuration = performance.now() - startTime;
+        loadTime.textContent = `Loaded in ${Math.round(loadDuration)}ms`;
+        
+        // Hide performance indicator after 5 seconds
+        setTimeout(() => {
+          performanceIndicator.style.opacity = '0';
+          setTimeout(() => {
+            performanceIndicator.style.display = 'none';
+          }, 500);
+        }, 5000);
       }
-      
-      const sortedFiles = sortNotes([...filesToRender], currentSort);
-      
-      filesDiv.innerHTML = sortedFiles.map(file => `
-        <div class="file-item file-enter" data-file-id="${file.id}">
-          <div class="file-info">
-            <div class="file-icon">
-              <i class="fas ${getFileIcon(file.name)}"></i>
-            </div>
-            <div class="file-details">
-              <div class="file-name">${file.name}</div>
-              <div class="file-size">${formatFileSize(file.size)}</div>
-            </div>
-          </div>
-          <div class="file-meta">
-            <div>
-              <span class="file-author">By ${file.author}</span>
-              <span class="file-date"> • ${formatDate(file.timestamp)}</span>
-            </div>
-            <div class="file-actions">
-              <a href="${file.url}" target="_blank" class="btn btn-primary btn-small">
-                <i class="fas fa-download"></i>
-              </a>
-              <button class="btn btn-danger btn-small" onclick="deleteFile('${file.id}', '${file.name}')">
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      `).join('');
-      
-      filesCount.textContent = `${filesToRender.length} ${filesToRender.length === 1 ? 'file' : 'files'}`;
-    }
+    }, 50); // 50ms debounce
 
     // Set up sorting
     sortButtons.forEach(button => {
       button.addEventListener("click", () => {
-        const container = button.closest('.notes-container') || button.closest('.files-container');
-        const isNotes = container.classList.contains('notes-container');
-        
-        // Update active state for the specific container
-        container.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove("active"));
+        sortButtons.forEach(btn => btn.classList.remove("active"));
         button.classList.add("active");
         currentSort = button.dataset.sort;
         
-        // Re-render with new sort
-        if (isNotes) {
-          renderNotes(notes);
-        } else {
-          renderFiles(files);
-        }
+        // Re-render notes with new sort
+        renderNotes(notes);
       });
     });
 
-    // File upload functionality
-    fileInput.addEventListener('change', handleFileSelect);
-    uploadArea.addEventListener('dragover', handleDragOver);
-    uploadArea.addEventListener('dragleave', handleDragLeave);
-    uploadArea.addEventListener('drop', handleFileDrop);
-    uploadFilesBtn.addEventListener('click', uploadFiles);
-
-    function handleFileSelect(e) {
-      const files = Array.from(e.target.files);
-      addFilesToPreview(files);
-    }
-
-    function handleDragOver(e) {
-      e.preventDefault();
-      uploadArea.classList.add('drag-over');
-    }
-
-    function handleDragLeave(e) {
-      e.preventDefault();
-      uploadArea.classList.remove('drag-over');
-    }
-
-    function handleFileDrop(e) {
-      e.preventDefault();
-      uploadArea.classList.remove('drag-over');
-      const files = Array.from(e.dataTransfer.files);
-      addFilesToPreview(files);
-    }
-
-    function addFilesToPreview(newFiles) {
-      // Filter out files larger than 10MB
-      const validFiles = newFiles.filter(file => file.size <= 10 * 1024 * 1024);
-      
-      if (validFiles.length < newFiles.length) {
-        showNotification("Some files were skipped because they exceed 10MB limit", "error");
-      }
-      
-      selectedFiles = [...selectedFiles, ...validFiles];
-      updateFilePreview();
-    }
-
-    function updateFilePreview() {
-      filePreview.innerHTML = '';
-      
-      selectedFiles.forEach((file, index) => {
-        const previewItem = document.createElement('div');
-        previewItem.className = 'preview-item';
-        previewItem.innerHTML = `
-          <span>${file.name}</span>
-          <i class="fas fa-times" onclick="removeFile(${index})"></i>
+    // Show Notes in Real-time with optimization
+    // Limit the number of notes fetched for performance
+    unsubscribe = db.collection("notes")
+      .orderBy("timestamp", "desc")
+      .limit(50) // Limit to 50 most recent notes for performance
+      .onSnapshot(snapshot => {
+        notes = [];
+        snapshot.forEach(doc => {
+          notes.push({ id: doc.id, ...doc.data() });
+        });
+        renderNotes(notes);
+      }, error => {
+        console.error("Error fetching notes: ", error);
+        notesDiv.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Error loading notes</h3>
+            <p>Please check your connection and try again.</p>
+          </div>
         `;
-        filePreview.appendChild(previewItem);
       });
-      
-      // Show progress bar when files are selected
-      if (selectedFiles.length > 0) {
-        progressBar.style.display = 'block';
-      } else {
-        progressBar.style.display = 'none';
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+      if (unsubscribe) {
+        unsubscribe();
       }
-    }
-
-    function removeFile(index) {
-      selectedFiles.splice(index, 1);
-      updateFilePreview();
-    }
-
-    async function uploadFiles() {
-      if (selectedFiles.length === 0) {
-        showNotification("Please select files to upload", "error");
-        return;
-      }
-      
-      const author = fileAuthorInput.value.trim() || "Anonymous";
-      
-      try {
-        uploadFilesBtn.disabled = true;
-        uploadFilesBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-        
-        let uploadedCount = 0;
-        
-        for (const file of selectedFiles) {
-          // Create a storage reference
-          const storageRef = storage.ref().child(`files/${Date.now()}_${file.name}`);
-          
-          // Upload file
-          const uploadTask = storageRef.put(file);
-          
-          // Monitor upload progress
-          uploadTask.on('state_changed', 
-            (snapshot) => {
-              // Update progress bar
-              const progressPercent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              progress.style.width = progressPercent + '%';
-            },
-            (error) => {
-              console.error("Upload error:", error);
-              showNotification(`Error uploading ${file.name}`, "error");
-            },
-            async () => {
-              // Upload completed successfully
-              const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-              
-              // Add file info to Firestore
-              await db.collection("files").add({
-                name: file.name,
-                size: file.size,
-                url: downloadURL,
-                author: author,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-              });
-              
-              uploadedCount++;
-              
-              if (uploadedCount === selectedFiles.length) {
-                // All files uploaded
-                showNotification(`Successfully uploaded ${uploadedCount} files!`);
-                resetUploadForm();
-              }
-            }
-          );
-        }
-      } catch (error) {
-        console.error("Upload error:", error);
-        showNotification("Error uploading files", "error");
-        resetUploadForm();
-      }
-    }
-
-    function resetUploadForm() {
-      selectedFiles = [];
-      updateFilePreview();
-      fileAuthorInput.value = "";
-      progress.style.width = '0%';
-      uploadFilesBtn.disabled = false;
-      uploadFilesBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Files';
-    }
-
-    // Show Notes in Real-time
-    db.collection("notes").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-      notes = [];
-      snapshot.forEach(doc => {
-        notes.push({ id: doc.id, ...doc.data() });
-      });
-      renderNotes(notes);
-    }, error => {
-      console.error("Error fetching notes: ", error);
-      notesDiv.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-exclamation-triangle"></i>
-          <h3>Error loading notes</h3>
-          <p>Please check your connection and try again.</p>
-        </div>
-      `;
-    });
-
-    // Show Files in Real-time
-    db.collection("files").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-      files = [];
-      snapshot.forEach(doc => {
-        files.push({ id: doc.id, ...doc.data() });
-      });
-      renderFiles(files);
-    }, error => {
-      console.error("Error fetching files: ", error);
-      filesDiv.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-exclamation-triangle"></i>
-          <h3>Error loading files</h3>
-          <p>Please check your connection and try again.</p>
-        </div>
-      `;
     });
   </script>
 </body>
