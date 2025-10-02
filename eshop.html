@@ -42,41 +42,29 @@
       color: var(--dark);
       line-height: 1.6;
       min-height: 100vh;
-      padding: 16px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
+      overflow-x: hidden;
     }
 
     .container {
       width: 100%;
-      max-width: 1200px;
+      max-width: 900px;
       margin: 0 auto;
-    }
-
-    /* Mobile First Layout */
-    .app-layout {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      width: 100%;
-    }
-
-    /* Sidebar for Desktop */
-    .sidebar {
-      display: none;
     }
 
     header {
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 30px;
       width: 100%;
     }
 
     h1 {
       color: var(--dark);
       margin-bottom: 12px;
-      font-size: 1.8rem;
+      font-size: 2.5rem;
       font-weight: 700;
       display: inline-block;
       position: relative;
@@ -85,115 +73,45 @@
     h1::after {
       content: '';
       position: absolute;
-      bottom: -6px;
+      bottom: -8px;
       left: 50%;
       transform: translateX(-50%);
-      width: 60px;
-      height: 3px;
+      width: 80px;
+      height: 4px;
       background: var(--gradient);
       border-radius: 2px;
     }
 
     .subtitle {
       color: var(--gray);
-      font-size: 1rem;
-      margin-bottom: 20px;
+      font-size: 1.1rem;
+      margin-bottom: 30px;
       font-weight: 400;
     }
 
     .app-container {
       background: white;
       border-radius: var(--border-radius-lg);
-      box-shadow: var(--box-shadow);
+      box-shadow: var(--box-shadow-lg);
       overflow: hidden;
       width: 100%;
-    }
-
-    .form-container {
-      padding: 20px;
-      background: white;
-      border-bottom: 1px solid var(--gray-light);
-    }
-
-    #noteForm {
+      position: relative;
+      z-index: 1;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-    }
-
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    input, textarea {
-      padding: 14px 16px;
-      border-radius: var(--border-radius-sm);
-      border: 1px solid var(--gray-light);
-      font-size: 1rem;
-      transition: var(--transition);
-      width: 100%;
-      font-family: 'Inter', sans-serif;
-      background: white;
-    }
-
-    textarea {
-      min-height: 100px;
-      resize: vertical;
-    }
-
-    input:focus, textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .btn {
-      padding: 14px 20px;
-      border-radius: var(--border-radius-sm);
-      border: none;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-dark);
-      transform: translateY(-1px);
-    }
-
-    .btn-danger {
-      background: transparent;
-      color: var(--danger);
-      border: 1px solid var(--gray-light);
-      padding: 8px 12px;
-    }
-
-    .btn-danger:hover {
-      background: var(--danger);
-      color: white;
     }
 
     .notes-container {
-      padding: 20px;
-      max-height: 400px;
+      padding: 30px;
+      flex: 1;
+      max-height: 500px;
       overflow-y: auto;
+      position: relative;
+      border-bottom: 1px solid var(--gray-light);
     }
 
     .notes-container::-webkit-scrollbar {
-      width: 4px;
+      width: 6px;
     }
 
     .notes-container::-webkit-scrollbar-track {
@@ -208,11 +126,9 @@
 
     .notes-header {
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--gray-light);
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
     }
 
     .notes-count {
@@ -221,14 +137,12 @@
       background: var(--gray-light);
       padding: 6px 12px;
       border-radius: 20px;
-      font-size: 0.85rem;
-      text-align: center;
+      font-size: 0.9rem;
     }
 
     .sort-options {
       display: flex;
-      gap: 8px;
-      justify-content: center;
+      gap: 10px;
     }
 
     .sort-btn {
@@ -240,7 +154,6 @@
       font-size: 0.85rem;
       font-weight: 500;
       transition: var(--transition);
-      flex: 1;
     }
 
     .sort-btn.active {
@@ -256,12 +169,12 @@
 
     .notes-list {
       display: grid;
-      gap: 16px;
+      gap: 20px;
     }
 
     .note {
       background: white;
-      padding: 16px;
+      padding: 20px;
       border-radius: var(--border-radius);
       box-shadow: var(--box-shadow);
       transition: var(--transition);
@@ -282,27 +195,26 @@
     }
 
     .note:hover {
-      transform: translateY(-2px);
+      transform: translateY(-3px);
       box-shadow: var(--box-shadow-lg);
     }
 
     .note-content {
-      margin-bottom: 12px;
+      margin-bottom: 15px;
       word-wrap: break-word;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
     .note-meta {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-      font-size: 0.8rem;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
       color: var(--gray);
     }
 
     .note-actions {
       display: flex;
-      justify-content: flex-end;
       gap: 8px;
     }
 
@@ -315,15 +227,96 @@
       color: var(--primary);
     }
 
+    .form-container {
+      padding: 30px;
+      background: white;
+      position: relative;
+    }
+
+    #noteForm {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 15px;
+    }
+
+    input, textarea {
+      padding: 16px 20px;
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--gray-light);
+      font-size: 1rem;
+      transition: var(--transition);
+      flex: 1;
+      font-family: 'Inter', sans-serif;
+      background: white;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .btn {
+      padding: 16px 28px;
+      border-radius: var(--border-radius-sm);
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--gray-light);
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+    }
+
     .empty-state {
       text-align: center;
-      padding: 40px 20px;
+      padding: 60px 20px;
       color: var(--gray);
     }
 
     .empty-state i {
-      font-size: 3rem;
-      margin-bottom: 16px;
+      font-size: 4rem;
+      margin-bottom: 20px;
       color: var(--gray-light);
     }
 
@@ -335,18 +328,18 @@
 
     .char-counter {
       text-align: right;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--gray);
-      margin-top: 6px;
+      margin-top: 8px;
     }
 
     .status-indicator {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--gray);
-      margin-top: 16px;
+      margin-top: 20px;
       justify-content: center;
     }
 
@@ -364,202 +357,35 @@
       100% { opacity: 1; }
     }
 
-    /* Mobile Menu */
-    .mobile-menu {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
-      background: white;
-      border-bottom: 1px solid var(--gray-light);
-    }
-
-    .menu-toggle {
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      color: var(--dark);
-      cursor: pointer;
-    }
-
-    /* Desktop Styles */
-    @media (min-width: 768px) {
-      body {
-        padding: 24px;
-      }
-
-      .app-layout {
-        flex-direction: row;
-        gap: 24px;
-        align-items: flex-start;
-      }
-
-      .sidebar {
-        display: block;
-        flex: 0 0 300px;
-        background: white;
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--box-shadow);
-        padding: 24px;
-        position: sticky;
-        top: 24px;
-      }
-
-      .app-container {
-        flex: 1;
-      }
-
-      .mobile-menu {
-        display: none;
-      }
-
-      h1 {
-        font-size: 2.2rem;
-      }
-
-      h1::after {
-        width: 80px;
-        height: 4px;
-      }
-
-      .subtitle {
-        font-size: 1.1rem;
-      }
-
-      .form-container {
-        padding: 24px;
-      }
-
+    @media (max-width: 768px) {
       .input-group {
-        flex-direction: row;
-        gap: 16px;
+        flex-direction: column;
       }
-
-      .btn {
-        width: auto;
-        flex: 0 0 auto;
-      }
-
-      .notes-container {
-        padding: 24px;
-        max-height: 600px;
-      }
-
+      
       .notes-header {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
       }
-
-      .notes-count {
-        text-align: left;
-      }
-
+      
       .sort-options {
-        justify-content: flex-end;
-      }
-
-      .sort-btn {
-        flex: 0 0 auto;
-      }
-
-      .note-meta {
-        flex-direction: row;
+        align-self: stretch;
         justify-content: space-between;
-        align-items: center;
       }
-
+      
+      .note-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
       .note-actions {
-        justify-content: flex-end;
+        align-self: flex-end;
       }
-
-      .notes-list {
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
-      }
-
-      .note {
-        padding: 20px;
-      }
-    }
-
-    /* Large Desktop Styles */
-    @media (min-width: 1024px) {
-      .sidebar {
-        flex: 0 0 350px;
-      }
-
-      .notes-list {
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      }
-
+      
       h1 {
-        font-size: 2.5rem;
+        font-size: 2rem;
       }
-    }
-
-    /* Sidebar Content */
-    .sidebar-content {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .sidebar-section {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .sidebar-section h3 {
-      color: var(--dark);
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .stat-card {
-      background: var(--light);
-      padding: 16px;
-      border-radius: var(--border-radius);
-      text-align: center;
-    }
-
-    .stat-number {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 4px;
-    }
-
-    .stat-label {
-      font-size: 0.85rem;
-      color: var(--gray);
-    }
-
-    .feature-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .feature-list li {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.9rem;
-      color: var(--gray-dark);
-    }
-
-    .feature-list i {
-      color: var(--primary);
     }
 
     .pulse {
@@ -580,185 +406,49 @@
         transform: translateX(100%);
       }
     }
-
-    /* Mobile Sidebar */
-    .mobile-sidebar {
-      position: fixed;
-      top: 0;
-      left: -100%;
-      width: 280px;
-      height: 100%;
-      background: white;
-      box-shadow: var(--box-shadow-lg);
-      transition: var(--transition);
-      z-index: 1000;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    .mobile-sidebar.active {
-      left: 0;
-    }
-
-    .sidebar-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 999;
-      opacity: 0;
-      visibility: hidden;
-      transition: var(--transition);
-    }
-
-    .sidebar-overlay.active {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .close-sidebar {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      color: var(--gray);
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Mobile Menu -->
-    <div class="mobile-menu">
-      <button class="menu-toggle" id="menuToggle">
-        <i class="fas fa-bars"></i>
-      </button>
-      <h1>NoteShare</h1>
-      <div style="width: 24px;"></div> <!-- Spacer for balance -->
-    </div>
-
-    <!-- Mobile Sidebar -->
-    <div class="mobile-sidebar" id="mobileSidebar">
-      <button class="close-sidebar" id="closeSidebar">
-        <i class="fas fa-times"></i>
-      </button>
-      <div class="sidebar-content">
-        <div class="sidebar-section">
-          <h3>App Info</h3>
-          <p style="color: var(--gray); font-size: 0.9rem;">
-            Share notes in real-time with anyone. Perfect for collaboration and quick information sharing.
-          </p>
-        </div>
-        <div class="sidebar-section">
-          <h3>Statistics</h3>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-number" id="totalNotes">0</div>
-              <div class="stat-label">Total Notes</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-number" id="activeUsers">1</div>
-              <div class="stat-label">Active Users</div>
-            </div>
+    <header>
+      <h1><i class="fas fa-sticky-note"></i> NoteShare</h1>
+      <p class="subtitle">Collaborate in real-time with modern note sharing</p>
+    </header>
+    
+    <div class="app-container">
+      <!-- Notes Section (Now at the top) -->
+      <div class="notes-container">
+        <div class="notes-header">
+          <h2>Shared Notes</h2>
+          <div class="notes-count">Loading...</div>
+          <div class="sort-options">
+            <button class="sort-btn active" data-sort="newest">Newest</button>
+            <button class="sort-btn" data-sort="oldest">Oldest</button>
           </div>
-        </div>
-        <div class="sidebar-section">
-          <h3>Features</h3>
-          <ul class="feature-list">
-            <li><i class="fas fa-bolt"></i> Real-time updates</li>
-            <li><i class="fas fa-mobile-alt"></i> Mobile friendly</li>
-            <li><i class="fas fa-shield-alt"></i> Secure sharing</li>
-            <li><i class="fas fa-sync"></i> Auto-sync</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-    <div class="app-layout">
-      <!-- Desktop Sidebar -->
-      <aside class="sidebar">
-        <div class="sidebar-content">
-          <header>
-            <h1><i class="fas fa-sticky-note"></i> NoteShare</h1>
-            <p class="subtitle">Collaborate in real-time</p>
-          </header>
-          
-          <div class="sidebar-section">
-            <h3>Statistics</h3>
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-number" id="desktopTotalNotes">0</div>
-                <div class="stat-label">Total Notes</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-number" id="desktopActiveUsers">1</div>
-                <div class="stat-label">Active Users</div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="sidebar-section">
-            <h3>Features</h3>
-            <ul class="feature-list">
-              <li><i class="fas fa-bolt"></i> Real-time updates</li>
-              <li><i class="fas fa-mobile-alt"></i> Mobile friendly</li>
-              <li><i class="fas fa-shield-alt"></i> Secure sharing</li>
-              <li><i class="fas fa-sync"></i> Auto-sync</li>
-              <li><i class="fas fa-cloud"></i> Cloud storage</li>
-              <li><i class="fas fa-users"></i> Multi-user</li>
-            </ul>
-          </div>
-          
-          <div class="sidebar-section">
-            <h3>Tips</h3>
-            <ul class="feature-list">
-              <li><i class="fas fa-lightbulb"></i> Keep notes concise</li>
-              <li><i class="fas fa-lightbulb"></i> Use clear titles</li>
-              <li><i class="fas fa-lightbulb"></i> Share with team</li>
-            </ul>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Main Content -->
-      <main class="app-container">
-        <div class="form-container">
-          <form id="noteForm">
-            <textarea id="noteInput" placeholder="What's on your mind? Share it with the world..." required maxlength="500"></textarea>
-            <div class="char-counter">
-              <span id="charCount">0</span>/500 characters
-            </div>
-            <div class="input-group">
-              <input type="text" id="authorInput" placeholder="Your name (optional)" maxlength="30">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-paper-plane"></i> Share Note
-              </button>
-            </div>
-          </form>
         </div>
         
-        <div class="notes-container">
-          <div class="notes-header">
-            <h2>Shared Notes</h2>
-            <div class="notes-count">Loading...</div>
-            <div class="sort-options">
-              <button class="sort-btn active" data-sort="newest">Newest</button>
-              <button class="sort-btn" data-sort="oldest">Oldest</button>
-            </div>
-          </div>
-          
-          <div id="notes" class="notes-list">
-            <div class="loading">
-              <i class="fas fa-spinner fa-spin"></i> Loading notes...
-            </div>
+        <div id="notes" class="notes-list">
+          <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading notes...
           </div>
         </div>
-      </main>
+      </div>
+      
+      <!-- Form Section (Now at the bottom) -->
+      <div class="form-container">
+        <form id="noteForm">
+          <textarea id="noteInput" placeholder="What's on your mind? Share it with the world..." required maxlength="500"></textarea>
+          <div class="char-counter">
+            <span id="charCount">0</span>/500 characters
+          </div>
+          <div class="input-group">
+            <input type="text" id="authorInput" placeholder="Your name (optional)" maxlength="30">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-paper-plane"></i> Share Note
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div class="status-indicator">
@@ -801,30 +491,6 @@
     const sortButtons = document.querySelectorAll(".sort-btn");
     const charCount = document.getElementById("charCount");
     const statusText = document.getElementById("statusText");
-    const menuToggle = document.getElementById("menuToggle");
-    const mobileSidebar = document.getElementById("mobileSidebar");
-    const closeSidebar = document.getElementById("closeSidebar");
-    const sidebarOverlay = document.getElementById("sidebarOverlay");
-    const totalNotes = document.getElementById("totalNotes");
-    const activeUsers = document.getElementById("activeUsers");
-    const desktopTotalNotes = document.getElementById("desktopTotalNotes");
-    const desktopActiveUsers = document.getElementById("desktopActiveUsers");
-
-    // Mobile sidebar functionality
-    menuToggle.addEventListener('click', () => {
-      mobileSidebar.classList.add('active');
-      sidebarOverlay.classList.add('active');
-    });
-
-    closeSidebar.addEventListener('click', () => {
-      mobileSidebar.classList.remove('active');
-      sidebarOverlay.classList.remove('active');
-    });
-
-    sidebarOverlay.addEventListener('click', () => {
-      mobileSidebar.classList.remove('active');
-      sidebarOverlay.classList.remove('active');
-    });
 
     // App State
     let currentSort = "newest";
@@ -984,10 +650,6 @@
       notesDiv.appendChild(fragment);
       
       notesCount.textContent = `${notesToRender.length} ${notesToRender.length === 1 ? 'note' : 'notes'}`;
-      
-      // Update statistics
-      totalNotes.textContent = notesToRender.length;
-      desktopTotalNotes.textContent = notesToRender.length;
     }
 
     // Set up sorting
