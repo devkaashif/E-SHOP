@@ -3,33 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Simple Screen Sharing (Firestore signaling)</title>
+  <title>Cross-Device Screen Sharing</title>
   <style>
     body { font-family: system-ui, Arial; max-width:900px; margin:32px auto; }
     h1 { margin-bottom: 6px; }
     .row { display:flex; gap:12px; margin:12px 0; flex-wrap:wrap; }
     button { padding:8px 12px; }
     input { padding:8px; min-width:220px; }
-    video { width:100%; max-height: 60vh; background:#000; border-radius:6px; }
+    video { width:100%; max-height: 50vh; background:#000; border-radius:6px; }
     .small { font-size: 0.9rem; color:#555; }
     .info { margin-top:18px; padding:12px; border-radius:8px; background:#f6f6f6; color:#333; }
     label { display:block; margin-bottom:6px; font-weight:600;}
   </style>
 </head>
 <body>
-  <h1>Screen sharing demo (Firestore signaling)</h1>
-  <p class="small">Create a room to start sharing your screen. Copy the Room ID and share it with a viewer to join.</p>
+  <h1>Screen / Camera Sharing (PC + Mobile)</h1>
+  <p class="small">Host can share either screen (if supported) or camera. Viewer joins using Room ID.</p>
 
   <div class="row">
     <div>
-      <label>Create room (host / share screen)</label>
-      <button id="createBtn">Create room & share</button>
+      <label>Host / Share</label>
+      <button id="screenShareBtn">Share Screen</button>
+      <button id="cameraShareBtn">Share Camera</button>
       <button id="hangupBtn" disabled>Hang up</button>
     </div>
 
     <div>
-      <label>Join room (viewer)</label>
-      <input id="roomIdInput" placeholder="Paste room ID here" />
+      <label>Join as Viewer</label>
+      <input id="roomIdInput" placeholder="Paste room ID" />
       <button id="joinBtn">Join room</button>
     </div>
   </div>
@@ -37,11 +38,11 @@
   <div class="info">
     <div><strong>Room ID:</strong> <span id="roomIdDisplay">—</span></div>
     <div style="margin-top:8px;">
-      <label>Local preview (host only)</label>
+      <label>Local (Host)</label>
       <video id="localVideo" autoplay playsinline muted></video>
     </div>
     <div style="margin-top:12px;">
-      <label>Remote / viewer video</label>
+      <label>Remote (Viewer)</label>
       <video id="remoteVideo" autoplay playsinline></video>
     </div>
   </div>
@@ -60,12 +61,12 @@
     appId: "1:105810834:web:example"
   };
 
-  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const firestore = firebase.firestore();
 
-  // ---------- UI elements ----------
-  const createBtn = document.getElementById('createBtn');
+  // ---------- UI ----------
+  const screenShareBtn = document.getElementById('screenShareBtn');
+  const cameraShareBtn = document.getElementById('cameraShareBtn');
   const joinBtn = document.getElementById('joinBtn');
   const hangupBtn = document.getElementById('hangupBtn');
   const roomIdInput = document.getElementById('roomIdInput');
@@ -73,218 +74,156 @@
   const localVideo = document.getElementById('localVideo');
   const remoteVideo = document.getElementById('remoteVideo');
 
-  // ---------- WebRTC variables ----------
-  const configuration = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' }
-    ]
-  };
-
+  // ---------- WebRTC ----------
+  const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
   let pc = null;
   let localStream = null;
   let roomRef = null;
   let localCandidatesCollection = null;
   let remoteCandidatesCollection = null;
 
-  // ---------- Create room (host) ----------
-  createBtn.onclick = async () => {
-    createBtn.disabled = true;
+  // ---------- Helper: start stream ----------
+  async function startStream(type) {
     try {
-      // 1. get screen stream from user
-      localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      if (type === 'screen') {
+        if (navigator.mediaDevices.getDisplayMedia) {
+          localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        } else {
+          alert("Screen share not supported. Falling back to camera.");
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        }
+      } else {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      }
+
       localVideo.srcObject = localStream;
+      return localStream;
+    } catch (err) {
+      alert("Could not start stream: " + err.message);
+      throw err;
+    }
+  }
 
-      // 2. create RTCPeerConnection
+  // ---------- Create room (host) ----------
+  async function createRoom(type) {
+    screenShareBtn.disabled = true;
+    cameraShareBtn.disabled = true;
+
+    try {
+      localStream = await startStream(type);
+
       pc = new RTCPeerConnection(configuration);
-
-      // send local ICE candidates to Firestore subcollection 'callerCandidates'
-      localCandidatesCollection = null; // set later after room created
-      pc.onicecandidate = event => {
-        if (!event.candidate) return;
-        if (!localCandidatesCollection) return;
-        localCandidatesCollection.add(event.candidate.toJSON());
+      pc.onicecandidate = e => {
+        if (e.candidate && localCandidatesCollection) {
+          localCandidatesCollection.add(e.candidate.toJSON());
+        }
       };
+      pc.ontrack = e => { remoteVideo.srcObject = e.streams[0]; };
 
-      // Show remote track on remoteVideo (viewer side)
-      pc.ontrack = event => {
-        // remote stream may contain multiple tracks; attach first stream
-        remoteVideo.srcObject = event.streams[0];
-      };
-
-      // add local tracks (screen)
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-      // 3. create room document in Firestore
-      roomRef = await firestore.collection('rooms').doc(); // auto id
+      roomRef = await firestore.collection('rooms').doc();
       localCandidatesCollection = roomRef.collection('callerCandidates');
 
-      // 4. create offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const roomWithOffer = {
-        offer: {
-          type: offer.type,
-          sdp: offer.sdp
-        },
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await roomRef.set(roomWithOffer);
-
-      // display room id
+      await roomRef.set({ offer: { type: offer.type, sdp: offer.sdp } });
       roomIdDisplay.textContent = roomRef.id;
       roomIdInput.value = roomRef.id;
 
-      // 5. listen for answer
-      roomRef.onSnapshot(async snapshot => {
+      roomRef.onSnapshot(snapshot => {
         const data = snapshot.data();
-        if (!pc.currentRemoteDescription && data && data.answer) {
-          const answer = new RTCSessionDescription(data.answer);
-          await pc.setRemoteDescription(answer);
+        if (data && data.answer && !pc.currentRemoteDescription) {
+          pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         }
       });
 
-      // 6. listen for remote ICE candidates from 'calleeCandidates'
       remoteCandidatesCollection = roomRef.collection('calleeCandidates');
       remoteCandidatesCollection.onSnapshot(snapshot => {
         snapshot.docChanges().forEach(async change => {
           if (change.type === 'added') {
-            const candidate = new RTCIceCandidate(change.doc.data());
-            await pc.addIceCandidate(candidate);
+            await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
           }
         });
       });
 
-      // allow viewer to hang up
       hangupBtn.disabled = false;
     } catch (err) {
-      console.error('Create room failed:', err);
-      alert('Failed to create room: ' + (err.message || err));
-      createBtn.disabled = false;
+      console.error("Create room error:", err);
+      screenShareBtn.disabled = false;
+      cameraShareBtn.disabled = false;
     }
-  };
+  }
 
   // ---------- Join room (viewer) ----------
   joinBtn.onclick = async () => {
     const roomId = roomIdInput.value.trim();
-    if (!roomId) { alert('Enter a room ID'); return; }
+    if (!roomId) return alert("Enter a room ID");
+
     joinBtn.disabled = true;
+    roomRef = firestore.collection('rooms').doc(roomId);
+    const roomSnapshot = await roomRef.get();
+    if (!roomSnapshot.exists) return alert("Room not found");
 
-    try {
-      roomRef = firestore.collection('rooms').doc(roomId);
-      const roomSnapshot = await roomRef.get();
-      if (!roomSnapshot.exists) {
-        alert('Room does not exist.');
-        joinBtn.disabled = false;
-        return;
-      }
+    pc = new RTCPeerConnection(configuration);
+    pc.onicecandidate = e => {
+      if (e.candidate) roomRef.collection('calleeCandidates').add(e.candidate.toJSON());
+    };
+    pc.ontrack = e => { remoteVideo.srcObject = e.streams[0]; };
 
-      // create peer connection for viewer (callee)
-      pc = new RTCPeerConnection(configuration);
+    const offer = roomSnapshot.data().offer;
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
-      // viewer won't capture local display by default; but if you want viewer audio output only, no local tracks added.
-      // If you want viewer to send audio/video back, capture and add tracks here.
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await roomRef.update({ answer: { type: answer.type, sdp: answer.sdp } });
 
-      // send local ICE candidates to 'calleeCandidates'
-      const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
-      pc.onicecandidate = event => {
-        if (!event.candidate) return;
-        calleeCandidatesCollection.add(event.candidate.toJSON());
-      };
-
-      // show remote stream when tracks arrive
-      pc.ontrack = event => {
-        remoteVideo.srcObject = event.streams[0];
-      };
-
-      // get offer
-      const roomData = roomSnapshot.data();
-      const offer = roomData.offer;
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-
-      // create answer
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-
-      // update room with answer
-      const answerData = {
-        answer: {
-          type: answer.type,
-          sdp: answer.sdp
-        },
-        answeredAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await roomRef.update(answerData);
-
-      // listen for caller ICE candidates
-      const callerCandidatesCollection = roomRef.collection('callerCandidates');
-      callerCandidatesCollection.onSnapshot(snapshot => {
-        snapshot.docChanges().forEach(async change => {
-          if (change.type === 'added') {
-            const data = change.doc.data();
-            await pc.addIceCandidate(new RTCIceCandidate(data));
-          }
-        });
+    roomRef.collection('callerCandidates').onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
       });
+    });
 
-      // update UI
-      roomIdDisplay.textContent = roomRef.id;
-      hangupBtn.disabled = false;
-    } catch (err) {
-      console.error('Join failed:', err);
-      alert('Failed to join: ' + (err.message || err));
-      joinBtn.disabled = false;
-    }
+    roomIdDisplay.textContent = roomRef.id;
+    hangupBtn.disabled = false;
   };
 
-  // ---------- Hang up / cleanup ----------
+  // ---------- Hang up ----------
   hangupBtn.onclick = async () => {
-    try {
-      // stop local tracks
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-        localVideo.srcObject = null;
-      }
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (pc) pc.close();
 
-      // close RTCPeerConnection
-      if (pc) {
-        pc.close();
-        pc = null;
-      }
-
-      // optionally delete room and its subcollections (callerCandidates / calleeCandidates)
-      if (roomRef) {
-        // delete subcollections (callerCandidates and calleeCandidates)
-        const deleteCollection = async colRef => {
-          const snap = await colRef.get();
-          const batch = firestore.batch();
-          snap.docs.forEach(doc => batch.delete(doc.ref));
-          await batch.commit();
-        };
-
-        try {
-          await deleteCollection(roomRef.collection('callerCandidates'));
-          await deleteCollection(roomRef.collection('calleeCandidates'));
-          await roomRef.delete();
-        } catch (err) {
-          console.warn('Cleanup warning (non-fatal):', err);
-        }
-      }
-
-      roomRef = null;
-      roomIdDisplay.textContent = '—';
-      roomIdInput.value = '';
-      hangupBtn.disabled = true;
-      createBtn.disabled = false;
-      joinBtn.disabled = false;
-      remoteVideo.srcObject = null;
-    } catch (err) {
-      console.error('Hangup error:', err);
+    if (roomRef) {
+      const deleteCollection = async col => {
+        const snap = await col.get();
+        const batch = firestore.batch();
+        snap.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      };
+      try {
+        await deleteCollection(roomRef.collection('callerCandidates'));
+        await deleteCollection(roomRef.collection('calleeCandidates'));
+        await roomRef.delete();
+      } catch (e) { console.warn("Cleanup error:", e); }
     }
+
+    roomRef = null;
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+    roomIdDisplay.textContent = "—";
+    roomIdInput.value = "";
+
+    screenShareBtn.disabled = false;
+    cameraShareBtn.disabled = false;
+    joinBtn.disabled = false;
+    hangupBtn.disabled = true;
   };
 
-  // Safety: warn before unload
+  // ---------- Bind buttons ----------
+  screenShareBtn.onclick = () => createRoom('screen');
+  cameraShareBtn.onclick = () => createRoom('camera');
+
   window.addEventListener('beforeunload', () => {
     if (localStream) localStream.getTracks().forEach(t => t.stop());
     if (pc) pc.close();
