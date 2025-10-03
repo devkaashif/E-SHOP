@@ -3,50 +3,45 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cross-Device Screen Sharing</title>
+  <title>Screen & Camera Sharing (PC + Mobile)</title>
   <style>
-    body { font-family: system-ui, Arial; max-width:900px; margin:32px auto; }
-    h1 { margin-bottom: 6px; }
-    .row { display:flex; gap:12px; margin:12px 0; flex-wrap:wrap; }
-    button { padding:8px 12px; }
-    input { padding:8px; min-width:220px; }
-    video { width:100%; max-height: 50vh; background:#000; border-radius:6px; }
-    .small { font-size: 0.9rem; color:#555; }
-    .info { margin-top:18px; padding:12px; border-radius:8px; background:#f6f6f6; color:#333; }
-    label { display:block; margin-bottom:6px; font-weight:600;}
+    body { font-family: Arial, sans-serif; margin:0; padding:16px; background:#f5f5f5; }
+    h1 { font-size:1.4rem; text-align:center; }
+    .row { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0; justify-content:center; }
+    button, input { padding:10px; border-radius:6px; border:1px solid #ccc; font-size:1rem; }
+    button { background:#1976d2; color:white; border:none; cursor:pointer; }
+    button:disabled { background:#888; cursor:not-allowed; }
+    input { flex:1; min-width:180px; }
+    video { width:100%; max-height:45vh; background:#000; border-radius:8px; margin-top:8px; }
+    .info { background:white; padding:12px; border-radius:8px; margin-top:12px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+    .label { font-weight:600; margin-top:10px; display:block; }
+    .note { font-size:0.85rem; color:#555; text-align:center; margin-top:8px; }
   </style>
 </head>
 <body>
-  <h1>Screen / Camera Sharing (PC + Mobile)</h1>
-  <p class="small">Host can share either screen (if supported) or camera. Viewer joins using Room ID.</p>
+  <h1>Screen & Camera Sharing</h1>
+  <p class="note">PC can share screen or camera. On mobile, camera is recommended (screen sharing support is limited).</p>
 
   <div class="row">
-    <div>
-      <label>Host / Share</label>
-      <button id="screenShareBtn">Share Screen</button>
-      <button id="cameraShareBtn">Share Camera</button>
-      <button id="hangupBtn" disabled>Hang up</button>
-    </div>
+    <button id="screenShareBtn">Share Screen</button>
+    <button id="cameraShareBtn">Share Camera</button>
+    <button id="hangupBtn" disabled>Hang up</button>
+  </div>
 
-    <div>
-      <label>Join as Viewer</label>
-      <input id="roomIdInput" placeholder="Paste room ID" />
-      <button id="joinBtn">Join room</button>
-    </div>
+  <div class="row">
+    <input id="roomIdInput" placeholder="Room ID" />
+    <button id="joinBtn">Join as Viewer</button>
   </div>
 
   <div class="info">
     <div><strong>Room ID:</strong> <span id="roomIdDisplay">—</span></div>
-    <div style="margin-top:8px;">
-      <label>Local (Host)</label>
-      <video id="localVideo" autoplay playsinline muted></video>
-    </div>
-    <div style="margin-top:12px;">
-      <label>Remote (Viewer)</label>
-      <video id="remoteVideo" autoplay playsinline></video>
-    </div>
+    <label class="label">Local Preview (Host)</label>
+    <video id="localVideo" autoplay playsinline muted></video>
+    <label class="label">Remote Stream (Viewer)</label>
+    <video id="remoteVideo" autoplay playsinline></video>
   </div>
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
@@ -60,7 +55,6 @@
     messagingSenderId: "105810834",
     appId: "1:105810834:web:example"
   };
-
   firebase.initializeApp(firebaseConfig);
   const firestore = firebase.firestore();
 
@@ -76,112 +70,96 @@
 
   // ---------- WebRTC ----------
   const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-  let pc = null;
-  let localStream = null;
-  let roomRef = null;
-  let localCandidatesCollection = null;
-  let remoteCandidatesCollection = null;
+  let pc = null, localStream = null, roomRef = null;
 
   // ---------- Helper: start stream ----------
-  async function startStream(type) {
+  async function startStream(mode) {
     try {
-      if (type === 'screen') {
+      if (mode === 'screen') {
         if (navigator.mediaDevices.getDisplayMedia) {
           localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         } else {
-          alert("Screen share not supported. Falling back to camera.");
+          alert("Screen sharing not supported on this device. Using camera instead.");
           localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         }
       } else {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       }
-
       localVideo.srcObject = localStream;
       return localStream;
     } catch (err) {
-      alert("Could not start stream: " + err.message);
+      alert("Could not start media: " + err.message);
       throw err;
     }
   }
 
-  // ---------- Create room (host) ----------
-  async function createRoom(type) {
+  // ---------- Create Room (Host) ----------
+  async function createRoom(mode) {
     screenShareBtn.disabled = true;
     cameraShareBtn.disabled = true;
-
     try {
-      localStream = await startStream(type);
-
+      localStream = await startStream(mode);
       pc = new RTCPeerConnection(configuration);
-      pc.onicecandidate = e => {
-        if (e.candidate && localCandidatesCollection) {
-          localCandidatesCollection.add(e.candidate.toJSON());
-        }
-      };
-      pc.ontrack = e => { remoteVideo.srcObject = e.streams[0]; };
-
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      pc.ontrack = e => remoteVideo.srcObject = e.streams[0];
+      pc.onicecandidate = e => { if (e.candidate) roomRef.collection('callerCandidates').add(e.candidate.toJSON()); };
 
-      roomRef = await firestore.collection('rooms').doc();
-      localCandidatesCollection = roomRef.collection('callerCandidates');
-
+      roomRef = firestore.collection('rooms').doc();
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-
       await roomRef.set({ offer: { type: offer.type, sdp: offer.sdp } });
+
       roomIdDisplay.textContent = roomRef.id;
       roomIdInput.value = roomRef.id;
 
       roomRef.onSnapshot(snapshot => {
         const data = snapshot.data();
-        if (data && data.answer && !pc.currentRemoteDescription) {
+        if (data?.answer && !pc.currentRemoteDescription) {
           pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         }
       });
 
-      remoteCandidatesCollection = roomRef.collection('calleeCandidates');
-      remoteCandidatesCollection.onSnapshot(snapshot => {
-        snapshot.docChanges().forEach(async change => {
+      roomRef.collection('calleeCandidates').onSnapshot(snapshot => {
+        snapshot.docChanges().forEach(change => {
           if (change.type === 'added') {
-            await pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+            pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
           }
         });
       });
 
       hangupBtn.disabled = false;
     } catch (err) {
-      console.error("Create room error:", err);
+      console.error("Host error:", err);
       screenShareBtn.disabled = false;
       cameraShareBtn.disabled = false;
     }
   }
 
-  // ---------- Join room (viewer) ----------
+  // ---------- Join Room (Viewer) ----------
   joinBtn.onclick = async () => {
     const roomId = roomIdInput.value.trim();
     if (!roomId) return alert("Enter a room ID");
-
     joinBtn.disabled = true;
+
     roomRef = firestore.collection('rooms').doc(roomId);
     const roomSnapshot = await roomRef.get();
     if (!roomSnapshot.exists) return alert("Room not found");
 
     pc = new RTCPeerConnection(configuration);
-    pc.onicecandidate = e => {
-      if (e.candidate) roomRef.collection('calleeCandidates').add(e.candidate.toJSON());
-    };
-    pc.ontrack = e => { remoteVideo.srcObject = e.streams[0]; };
+    pc.ontrack = e => remoteVideo.srcObject = e.streams[0];
+    pc.onicecandidate = e => { if (e.candidate) roomRef.collection('calleeCandidates').add(e.candidate.toJSON()); };
 
     const offer = roomSnapshot.data().offer;
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
-
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await roomRef.update({ answer: { type: answer.type, sdp: answer.sdp } });
 
     roomRef.collection('callerCandidates').onSnapshot(snapshot => {
       snapshot.docChanges().forEach(change => {
-        if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        if (change.type === 'added') {
+          pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+        }
       });
     });
 
@@ -189,30 +167,30 @@
     hangupBtn.disabled = false;
   };
 
-  // ---------- Hang up ----------
+  // ---------- Hang Up ----------
   hangupBtn.onclick = async () => {
     if (localStream) localStream.getTracks().forEach(t => t.stop());
     if (pc) pc.close();
 
     if (roomRef) {
-      const deleteCollection = async col => {
-        const snap = await col.get();
-        const batch = firestore.batch();
-        snap.docs.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-      };
       try {
-        await deleteCollection(roomRef.collection('callerCandidates'));
-        await deleteCollection(roomRef.collection('calleeCandidates'));
+        const del = async c => {
+          const snap = await c.get();
+          const batch = firestore.batch();
+          snap.docs.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        };
+        await del(roomRef.collection('callerCandidates'));
+        await del(roomRef.collection('calleeCandidates'));
         await roomRef.delete();
-      } catch (e) { console.warn("Cleanup error:", e); }
+      } catch(e){ console.warn("Cleanup error", e); }
     }
 
-    roomRef = null;
     localVideo.srcObject = null;
     remoteVideo.srcObject = null;
     roomIdDisplay.textContent = "—";
     roomIdInput.value = "";
+    pc = null; roomRef = null;
 
     screenShareBtn.disabled = false;
     cameraShareBtn.disabled = false;
@@ -220,14 +198,10 @@
     hangupBtn.disabled = true;
   };
 
-  // ---------- Bind buttons ----------
+  // ---------- Bind ----------
   screenShareBtn.onclick = () => createRoom('screen');
   cameraShareBtn.onclick = () => createRoom('camera');
-
-  window.addEventListener('beforeunload', () => {
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    if (pc) pc.close();
-  });
+  window.addEventListener('beforeunload', () => { if (localStream) localStream.getTracks().forEach(t => t.stop()); if (pc) pc.close(); });
   </script>
 </body>
 </html>
