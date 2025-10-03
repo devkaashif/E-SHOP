@@ -1,437 +1,294 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screen Sharing System</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        header {
-            text-align: center;
-            padding: 20px 0;
-            margin-bottom: 30px;
-        }
-        
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        
-        .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        
-        .main-content {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-        }
-        
-        .panel {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .control-panel {
-            flex: 1;
-            min-width: 300px;
-            max-width: 400px;
-        }
-        
-        .screen-panel {
-            flex: 2;
-            min-width: 500px;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        h2 {
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-            padding-bottom: 10px;
-        }
-        
-        .btn {
-            display: block;
-            width: 100%;
-            padding: 12px 20px;
-            margin: 10px 0;
-            border: none;
-            border-radius: 8px;
-            background: #4a76ee;
-            color: white;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .btn:hover {
-            background: #3a66de;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .btn:active {
-            transform: translateY(0);
-        }
-        
-        .btn-share {
-            background: #4CAF50;
-        }
-        
-        .btn-share:hover {
-            background: #45a049;
-        }
-        
-        .btn-stop {
-            background: #f44336;
-        }
-        
-        .btn-stop:hover {
-            background: #d32f2f;
-        }
-        
-        .screen-container {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            min-height: 400px;
-            position: relative;
-        }
-        
-        #screenView {
-            max-width: 100%;
-            max-height: 100%;
-            border-radius: 8px;
-        }
-        
-        .status {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 600;
-        }
-        
-        .status-sharing {
-            background: rgba(76, 175, 80, 0.2);
-            color: #a5d6a7;
-        }
-        
-        .status-waiting {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffd54f;
-        }
-        
-        .status-error {
-            background: rgba(244, 67, 54, 0.2);
-            color: #ef9a9a;
-        }
-        
-        .user-list {
-            margin-top: 20px;
-        }
-        
-        .user-item {
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            margin: 8px 0;
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #4a76ee;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            font-weight: bold;
-        }
-        
-        .instructions {
-            margin-top: 20px;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            opacity: 0.8;
-        }
-        
-        .no-screen {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .no-screen i {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            opacity: 0.5;
-        }
-        
-        @media (max-width: 768px) {
-            .main-content {
-                flex-direction: column;
-            }
-            
-            .control-panel, .screen-panel {
-                max-width: 100%;
-                min-width: 100%;
-            }
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Screen Sharing (Firestore signaling)</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width:900px; margin:32px auto; }
+    h1 { margin-bottom: 6px; }
+    .row { display:flex; gap:12px; margin:12px 0; flex-wrap:wrap; }
+    button { padding:8px 12px; }
+    input { padding:8px; min-width:220px; }
+    video { width:100%; max-height: 60vh; background:#000; border-radius:6px; }
+    .small { font-size: 0.9rem; color:#555; }
+    .info { margin-top:18px; padding:12px; border-radius:8px; background:#f6f6f6; color:#333; }
+    label { display:block; margin-bottom:6px; font-weight:600;}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Screen Sharing System</h1>
-            <p class="subtitle">Share your screen with others in real-time</p>
-        </header>
-        
-        <div class="main-content">
-            <div class="panel control-panel">
-                <h2>Controls</h2>
-                <button id="shareScreen" class="btn btn-share">Start Sharing Screen</button>
-                <button id="stopSharing" class="btn btn-stop" disabled>Stop Sharing</button>
-                
-                <div class="status status-waiting" id="status">
-                    Ready to share screen
-                </div>
-                
-                <div class="user-list">
-                    <h3>Active Users</h3>
-                    <div class="user-item">
-                        <div class="user-avatar">Y</div>
-                        <div>You (Current User)</div>
-                    </div>
-                    <div id="otherUsers"></div>
-                </div>
-                
-                <div class="instructions">
-                    <h3>How to use:</h3>
-                    <p>1. Click "Start Sharing Screen" to begin</p>
-                    <p>2. Select the screen or application window to share</p>
-                    <p>3. Others will see your screen in real-time</p>
-                    <p>4. Click "Stop Sharing" when finished</p>
-                </div>
-            </div>
-            
-            <div class="panel screen-panel">
-                <h2>Shared Screen</h2>
-                <div class="screen-container">
-                    <div class="no-screen" id="noScreen">
-                        <i>🖥️</i>
-                        <p>No screen is being shared</p>
-                        <p>Start sharing to see the screen here</p>
-                    </div>
-                    <video id="screenView" autoplay muted style="display: none;"></video>
-                </div>
-            </div>
-        </div>
+  <h1>Screen sharing demo (Firestore signaling)</h1>
+  <p class="small">Create a room to start sharing your screen. Copy the Room ID and share it with a viewer to join.</p>
+
+  <div class="row">
+    <div>
+      <label>Create room (host / share screen)</label>
+      <button id="createBtn">Create room & share</button>
+      <button id="hangupBtn" disabled>Hang up</button>
     </div>
 
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
-            authDomain: "poplol-7209f.firebaseapp.com",
-            projectId: "poplol-7209f",
-            storageBucket: "poplol-7209f.appspot.com",
-            messagingSenderId: "105810834",
-            appId: "1:105810834:web:example"
+    <div>
+      <label>Join room (viewer)</label>
+      <input id="roomIdInput" placeholder="Paste room ID here" />
+      <button id="joinBtn">Join room</button>
+    </div>
+  </div>
+
+  <div class="info">
+    <div><strong>Room ID:</strong> <span id="roomIdDisplay">—</span></div>
+    <div style="margin-top:8px;">
+      <label>Local preview (host only)</label>
+      <video id="localVideo" autoplay playsinline muted></video>
+    </div>
+    <div style="margin-top:12px;">
+      <label>Remote / viewer video</label>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <script>
+  // ---------- FIREBASE CONFIG ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
+    authDomain: "poplol-7209f.firebaseapp.com",
+    projectId: "poplol-7209f",
+    storageBucket: "poplol-7209f.appspot.com",
+    messagingSenderId: "105810834",
+    appId: "1:105810834:web:example"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const firestore = firebase.firestore();
+
+  // ---------- UI elements ----------
+  const createBtn = document.getElementById('createBtn');
+  const joinBtn = document.getElementById('joinBtn');
+  const hangupBtn = document.getElementById('hangupBtn');
+  const roomIdInput = document.getElementById('roomIdInput');
+  const roomIdDisplay = document.getElementById('roomIdDisplay');
+  const localVideo = document.getElementById('localVideo');
+  const remoteVideo = document.getElementById('remoteVideo');
+
+  // ---------- WebRTC variables ----------
+  const configuration = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' }
+    ]
+  };
+
+  let pc = null;
+  let localStream = null;
+  let roomRef = null;
+  let localCandidatesCollection = null;
+  let remoteCandidatesCollection = null;
+
+  // ---------- Create room (host) ----------
+  createBtn.onclick = async () => {
+    createBtn.disabled = true;
+    try {
+      // 1. get screen stream from user
+      localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      localVideo.srcObject = localStream;
+
+      // 2. create RTCPeerConnection
+      pc = new RTCPeerConnection(configuration);
+
+      // send local ICE candidates to Firestore subcollection 'callerCandidates'
+      localCandidatesCollection = null; // set later after room created
+      pc.onicecandidate = event => {
+        if (!event.candidate) return;
+        if (!localCandidatesCollection) return;
+        localCandidatesCollection.add(event.candidate.toJSON());
+      };
+
+      // Show remote track on remoteVideo (viewer side)
+      pc.ontrack = event => {
+        // remote stream may contain multiple tracks; attach first stream
+        remoteVideo.srcObject = event.streams[0];
+      };
+
+      // add local tracks (screen)
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+      // 3. create room document in Firestore
+      roomRef = await firestore.collection('rooms').doc(); // auto id
+      localCandidatesCollection = roomRef.collection('callerCandidates');
+
+      // 4. create offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const roomWithOffer = {
+        offer: {
+          type: offer.type,
+          sdp: offer.sdp
+        },
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await roomRef.set(roomWithOffer);
+
+      // display room id
+      roomIdDisplay.textContent = roomRef.id;
+      roomIdInput.value = roomRef.id;
+
+      // 5. listen for answer
+      roomRef.onSnapshot(async snapshot => {
+        const data = snapshot.data();
+        if (!pc.currentRemoteDescription && data && data.answer) {
+          const answer = new RTCSessionDescription(data.answer);
+          await pc.setRemoteDescription(answer);
+        }
+      });
+
+      // 6. listen for remote ICE candidates from 'calleeCandidates'
+      remoteCandidatesCollection = roomRef.collection('calleeCandidates');
+      remoteCandidatesCollection.onSnapshot(snapshot => {
+        snapshot.docChanges().forEach(async change => {
+          if (change.type === 'added') {
+            const candidate = new RTCIceCandidate(change.doc.data());
+            await pc.addIceCandidate(candidate);
+          }
+        });
+      });
+
+      // allow viewer to hang up
+      hangupBtn.disabled = false;
+    } catch (err) {
+      console.error('Create room failed:', err);
+      alert('Failed to create room: ' + (err.message || err));
+      createBtn.disabled = false;
+    }
+  };
+
+  // ---------- Join room (viewer) ----------
+  joinBtn.onclick = async () => {
+    const roomId = roomIdInput.value.trim();
+    if (!roomId) { alert('Enter a room ID'); return; }
+    joinBtn.disabled = true;
+
+    try {
+      roomRef = firestore.collection('rooms').doc(roomId);
+      const roomSnapshot = await roomRef.get();
+      if (!roomSnapshot.exists) {
+        alert('Room does not exist.');
+        joinBtn.disabled = false;
+        return;
+      }
+
+      // create peer connection for viewer (callee)
+      pc = new RTCPeerConnection(configuration);
+
+      // viewer won't capture local display by default; but if you want viewer audio output only, no local tracks added.
+      // If you want viewer to send audio/video back, capture and add tracks here.
+
+      // send local ICE candidates to 'calleeCandidates'
+      const calleeCandidatesCollection = roomRef.collection('calleeCandidates');
+      pc.onicecandidate = event => {
+        if (!event.candidate) return;
+        calleeCandidatesCollection.add(event.candidate.toJSON());
+      };
+
+      // show remote stream when tracks arrive
+      pc.ontrack = event => {
+        remoteVideo.srcObject = event.streams[0];
+      };
+
+      // get offer
+      const roomData = roomSnapshot.data();
+      const offer = roomData.offer;
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+      // create answer
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      // update room with answer
+      const answerData = {
+        answer: {
+          type: answer.type,
+          sdp: answer.sdp
+        },
+        answeredAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await roomRef.update(answerData);
+
+      // listen for caller ICE candidates
+      const callerCandidatesCollection = roomRef.collection('callerCandidates');
+      callerCandidatesCollection.onSnapshot(snapshot => {
+        snapshot.docChanges().forEach(async change => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            await pc.addIceCandidate(new RTCIceCandidate(data));
+          }
+        });
+      });
+
+      // update UI
+      roomIdDisplay.textContent = roomRef.id;
+      hangupBtn.disabled = false;
+    } catch (err) {
+      console.error('Join failed:', err);
+      alert('Failed to join: ' + (err.message || err));
+      joinBtn.disabled = false;
+    }
+  };
+
+  // ---------- Hang up / cleanup ----------
+  hangupBtn.onclick = async () => {
+    try {
+      // stop local tracks
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+        localVideo.srcObject = null;
+      }
+
+      // close RTCPeerConnection
+      if (pc) {
+        pc.close();
+        pc = null;
+      }
+
+      // optionally delete room and its subcollections (callerCandidates / calleeCandidates)
+      if (roomRef) {
+        // delete subcollections (callerCandidates and calleeCandidates)
+        const deleteCollection = async colRef => {
+          const snap = await colRef.get();
+          const batch = firestore.batch();
+          snap.docs.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        // DOM elements
-        const shareScreenBtn = document.getElementById('shareScreen');
-        const stopSharingBtn = document.getElementById('stopSharing');
-        const statusDiv = document.getElementById('status');
-        const screenView = document.getElementById('screenView');
-        const noScreenDiv = document.getElementById('noScreen');
-        const otherUsersDiv = document.getElementById('otherUsers');
-
-        // Variables
-        let localStream = null;
-        let screenStream = null;
-        let isSharing = false;
-        const userId = generateUserId();
-        let otherUsers = [];
-
-        // Generate a random user ID
-        function generateUserId() {
-            return 'user_' + Math.random().toString(36).substr(2, 9);
+        try {
+          await deleteCollection(roomRef.collection('callerCandidates'));
+          await deleteCollection(roomRef.collection('calleeCandidates'));
+          await roomRef.delete();
+        } catch (err) {
+          console.warn('Cleanup warning (non-fatal):', err);
         }
+      }
 
-        // Update status display
-        function updateStatus(message, type) {
-            statusDiv.textContent = message;
-            statusDiv.className = 'status';
-            
-            if (type === 'sharing') {
-                statusDiv.classList.add('status-sharing');
-            } else if (type === 'waiting') {
-                statusDiv.classList.add('status-waiting');
-            } else if (type === 'error') {
-                statusDiv.classList.add('status-error');
-            }
-        }
+      roomRef = null;
+      roomIdDisplay.textContent = '—';
+      roomIdInput.value = '';
+      hangupBtn.disabled = true;
+      createBtn.disabled = false;
+      joinBtn.disabled = false;
+      remoteVideo.srcObject = null;
+    } catch (err) {
+      console.error('Hangup error:', err);
+    }
+  };
 
-        // Start screen sharing
-        async function startScreenSharing() {
-            try {
-                updateStatus('Requesting screen share...', 'waiting');
-                
-                // Get screen stream
-                screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        cursor: "always"
-                    },
-                    audio: true
-                });
-                
-                // Show the screen in the video element
-                screenView.srcObject = screenStream;
-                screenView.style.display = 'block';
-                noScreenDiv.style.display = 'none';
-                
-                // Update UI
-                shareScreenBtn.disabled = true;
-                stopSharingBtn.disabled = false;
-                isSharing = true;
-                
-                updateStatus('Screen sharing active', 'sharing');
-                
-                // Handle when user stops sharing from browser UI
-                screenStream.getTracks().forEach(track => {
-                    track.onended = () => {
-                        stopScreenSharing();
-                    };
-                });
-                
-                // In a real implementation, you would send the stream to Firebase
-                // For this demo, we'll just simulate the connection
-                simulateStreamToFirebase();
-                
-            } catch (error) {
-                console.error('Error sharing screen:', error);
-                updateStatus('Failed to share screen: ' + error.message, 'error');
-            }
-        }
-
-        // Stop screen sharing
-        function stopScreenSharing() {
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
-                screenStream = null;
-            }
-            
-            // Reset UI
-            screenView.srcObject = null;
-            screenView.style.display = 'none';
-            noScreenDiv.style.display = 'block';
-            
-            shareScreenBtn.disabled = false;
-            stopSharingBtn.disabled = true;
-            isSharing = false;
-            
-            updateStatus('Screen sharing stopped', 'waiting');
-        }
-
-        // Simulate sending stream to Firebase (in a real app, this would use WebRTC)
-        function simulateStreamToFirebase() {
-            // In a real implementation, you would:
-            // 1. Create a WebRTC connection
-            // 2. Send the stream to Firebase RTDB or use Firebase Cloud Firestore
-            // 3. Other clients would receive the stream data
-            
-            // For this demo, we'll just update the UI to show it's working
-            setTimeout(() => {
-                if (isSharing) {
-                    updateStatus('Screen sharing active - Connected to 3 users', 'sharing');
-                    
-                    // Simulate other users joining
-                    simulateOtherUsers();
-                }
-            }, 1500);
-        }
-
-        // Simulate other users joining the session
-        function simulateOtherUsers() {
-            otherUsers = [
-                { id: 'user_abc123', name: 'Alex Johnson' },
-                { id: 'user_def456', name: 'Sam Smith' },
-                { id: 'user_ghi789', name: 'Taylor Kim' }
-            ];
-            
-            updateUserList();
-        }
-
-        // Update the list of other users
-        function updateUserList() {
-            otherUsersDiv.innerHTML = '';
-            
-            otherUsers.forEach(user => {
-                const userElement = document.createElement('div');
-                userElement.className = 'user-item';
-                
-                const avatar = document.createElement('div');
-                avatar.className = 'user-avatar';
-                avatar.textContent = user.name.charAt(0);
-                
-                const name = document.createElement('div');
-                name.textContent = user.name;
-                
-                userElement.appendChild(avatar);
-                userElement.appendChild(name);
-                
-                otherUsersDiv.appendChild(userElement);
-            });
-        }
-
-        // Event listeners
-        shareScreenBtn.addEventListener('click', startScreenSharing);
-        stopSharingBtn.addEventListener('click', stopScreenSharing);
-
-        // Initialize
-        updateStatus('Ready to share screen', 'waiting');
-    </script>
+  // Safety: warn before unload
+  window.addEventListener('beforeunload', () => {
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (pc) pc.close();
+  });
+  </script>
 </body>
 </html>
