@@ -3,32 +3,626 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cursor Sharing System</title>
+  <title>Firebase Note Sharing</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      background: #f5f5f5;
-      overflow: hidden;
-      cursor: none; /* hide default cursor */
+    :root {
+      --primary: #6366F1;
+      --primary-dark: #4F46E5;
+      --primary-light: #8B87EA;
+      --secondary: #EC4899;
+      --accent: #10B981;
+      --light: #F8FAFC;
+      --dark: #1E293B;
+      --gray: #64748B;
+      --gray-light: #E2E8F0;
+      --gray-dark: #475569;
+      --success: #10B981;
+      --danger: #EF4444;
+      --warning: #F59E0B;
+      --border-radius: 12px;
+      --border-radius-sm: 8px;
+      --border-radius-lg: 16px;
+      --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --transition: all 0.2s ease-in-out;
+      --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     }
-    .cursor {
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
+      color: var(--dark);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      width: 100%;
+    }
+
+    h1 {
+      color: var(--dark);
+      margin-bottom: 12px;
+      font-size: 2.5rem;
+      font-weight: 700;
+      display: inline-block;
+      position: relative;
+    }
+
+    h1::after {
+      content: '';
       position: absolute;
-      width: 15px;
-      height: 15px;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 4px;
+      background: var(--gradient);
+      border-radius: 2px;
+    }
+    .app-container {
+      background: white;
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--box-shadow-lg);
+      overflow: hidden;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user-profile {
+      padding: 20px;
+      background: var(--light);
+      border-bottom: 1px solid var(--gray-light);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      background: red;
-      pointer-events: none;
-      transform: translate(-50%, -50%);
+      background: var(--gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .user-info {
+      flex: 1;
+    }
+
+    .user-name {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .user-status {
+      font-size: 0.8rem;
+      color: var(--gray);
+    }
+
+    .change-name-btn {
+      background: none;
+      border: 1px solid var(--gray-light);
+      padding: 6px 12px;
+      border-radius: var(--border-radius-sm);
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--primary);
+      transition: var(--transition);
+    }
+
+    .change-name-btn:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    .name-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition);
+    }
+
+    .name-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--box-shadow-lg);
+      width: 90%;
+      max-width: 400px;
+      transform: translateY(20px);
+      transition: var(--transition);
+    }
+
+    .name-modal.active .modal-content {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--gray-light);
+      border-radius: var(--border-radius-sm);
+      font-size: 1rem;
+      margin-bottom: 20px;
+      transition: var(--transition);
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border-radius: var(--border-radius-sm);
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .modal-btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .modal-btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .modal-btn-secondary {
+      background: var(--gray-light);
+      color: var(--gray-dark);
+    }
+
+    .modal-btn-secondary:hover {
+      background: var(--gray);
+      color: white;
+    }
+
+    .notes-container {
+      padding: 30px;
+      flex: 1;
+      max-height: 400px;
+      overflow-y: auto;
+      position: relative;
+      border-bottom: 1px solid var(--gray-light);
+    }
+
+    .notes-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .notes-container::-webkit-scrollbar-track {
+      background: var(--gray-light);
+      border-radius: 10px;
+    }
+
+    .notes-container::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 10px;
+    }
+
+    .notes-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+
+    .notes-count {
+      font-weight: 400;
+      color: var(--gray);
+      background: var(--gray-light);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+    }
+
+    .sort-options {
+      display: flex;
+      gap: 10px;
+    }
+
+    .sort-btn {
+      background: none;
+      border: 1px solid var(--gray-light);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .sort-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .sort-btn:hover:not(.active) {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .notes-list {
+      display: grid;
+      gap: 20px;
+    }
+
+    .note {
+      background: white;
+      padding: 20px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      transition: var(--transition);
+      position: relative;
+      border-left: 4px solid var(--primary);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .note:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--box-shadow-lg);
+    }
+
+    .note-content {
+      margin-bottom: 15px;
+      word-wrap: break-word;
+      line-height: 1.7;
+    }
+
+    .note-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--gray);
+    }
+
+    .note-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .note-date {
+      font-style: italic;
+    }
+
+    .note-author {
+      font-weight: 500;
+      color: var(--primary);
+    }
+
+    .form-container {
+      padding: 30px;
+      background: white;
+      position: relative;
+    }
+
+    #noteForm {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 15px;
+    }
+
+    input, textarea {
+      padding: 16px 20px;
+      border-radius: var(--border-radius-sm);
+      border: 1px solid var(--gray-light);
+      font-size: 1rem;
+      transition: var(--transition);
+      flex: 1;
+      font-family: 'Inter', sans-serif;
+      background: white;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .btn {
+      padding: 16px 28px;
+      border-radius: var(--border-radius-sm);
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--gray-light);
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray);
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      color: var(--gray-light);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 30px;
+      color: var(--gray);
+    }
+
+    .char-counter {
+      text-align: right;
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 8px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 20px;
+      justify-content: center;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    @media (max-width: 768px) {
+      .input-group {
+        flex-direction: column;
+      }
+      
+      .notes-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+      
+      .sort-options {
+        align-self: stretch;
+        justify-content: space-between;
+      }
+      
+      .note-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .note-actions {
+        align-self: flex-end;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+    }
+
+    .pulse {
+      animation: pulse 1s infinite;
+    }
+
+    .fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateX(100%);
+      }
     }
   </style>
 </head>
 <body>
-  <script type="module">
-    // Import Firebase SDK
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+  <div class="container">
+    <header>
+      <h1><i class="fas fa-sticky-note"></i> NoteShare</h1>
+    </header>
+    
+    <div class="app-container">
+      <!-- User Profile Section -->
+      <div class="user-profile">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Guest User</div>
+          <div class="user-status" id="userStatus">Set your name to get started</div>
+        </div>
+        <button class="change-name-btn" id="changeNameBtn">
+          <i class="fas fa-edit"></i> Change
+        </button>
+      </div>
 
+      <!-- Notes Section -->
+      <div class="notes-container">
+        <div class="notes-header">
+          <div class="notes-count">Loading...</div>
+          <div class="sort-options">
+            <button class="sort-btn active" data-sort="newest">Newest</button>
+            <button class="sort-btn" data-sort="oldest">Oldest</button>
+          </div>
+        </div>
+        
+        <div id="notes" class="notes-list">
+          <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading notes...
+          </div>
+        </div>
+      </div>
+      
+      <!-- Form Section -->
+      <div class="form-container">
+        <form id="noteForm">
+          <textarea id="noteInput" placeholder="What's on your mind? Share it with the world..." required maxlength="500"></textarea>
+          <div class="char-counter">
+            <span id="charCount">0</span>/500 characters
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-paper-plane"></i> Share Note
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <span id="statusText">Connected to Firebase</span>
+    </div>
+  </div>
+
+  <!-- Name Change Modal -->
+  <div class="name-modal" id="nameModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Set Your Display Name</h3>
+      </div>
+      <input type="text" class="modal-input" id="nameInput" placeholder="Enter your name" maxlength="30" autofocus>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-secondary" id="cancelNameBtn">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="saveNameBtn">Save Name</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  
+  <script>
     // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
@@ -39,57 +633,271 @@
       appId: "1:105810834:web:example"
     };
 
-    // Init Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    // Unique ID for this user
-    const userId = "user-" + Math.random().toString(36).substr(2, 9);
+    // Enable persistence for offline support
+    db.enablePersistence()
+      .catch((err) => {
+        console.log("Persistence failed: ", err);
+      });
 
-    // Track cursor and update Firebase
-    document.addEventListener("mousemove", (e) => {
-      set(ref(db, "cursors/" + userId), {
-        x: e.clientX,
-        y: e.clientY,
-        color: cursorColor
+    // DOM Elements
+    const noteForm = document.getElementById("noteForm");
+    const noteInput = document.getElementById("noteInput");
+    const notesDiv = document.getElementById("notes");
+    const notesCount = document.querySelector(".notes-count");
+    const sortButtons = document.querySelectorAll(".sort-btn");
+    const charCount = document.getElementById("charCount");
+    const statusText = document.getElementById("statusText");
+    const userName = document.getElementById("userName");
+    const userAvatar = document.getElementById("userAvatar");
+    const userStatus = document.getElementById("userStatus");
+    const changeNameBtn = document.getElementById("changeNameBtn");
+    const nameModal = document.getElementById("nameModal");
+    const nameInput = document.getElementById("nameInput");
+    const saveNameBtn = document.getElementById("saveNameBtn");
+    const cancelNameBtn = document.getElementById("cancelNameBtn");
+
+    // App State
+    let currentSort = "newest";
+    let notes = [];
+    let unsubscribe = null;
+    let currentUserName = localStorage.getItem('userName') || 'Guest User';
+
+    // Initialize user name
+    function initializeUserName() {
+      userName.textContent = currentUserName;
+      userAvatar.textContent = currentUserName.charAt(0).toUpperCase();
+      userStatus.textContent = `Ready to share notes`;
+    }
+
+    // Character counter
+    noteInput.addEventListener('input', () => {
+      charCount.textContent = noteInput.value.length;
+    });
+
+    // Format date
+    function formatDate(timestamp) {
+      if (!timestamp) return "Just now";
+      
+      const date = timestamp.toDate();
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - date) / 1000);
+      
+      if (diffInSeconds < 60) return "Just now";
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+      
+      return date.toLocaleDateString();
+    }
+
+    // Add Note
+    noteForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const note = noteInput.value.trim();
+      
+      if (note) {
+        try {
+          // Add pulse animation to button
+          const submitBtn = noteForm.querySelector('button');
+          submitBtn.classList.add('pulse');
+          
+          // Optimistic UI update - add note immediately to UI
+          const tempId = 'temp_' + Date.now();
+          const tempNote = {
+            id: tempId,
+            text: note,
+            author: currentUserName,
+            timestamp: null
+          };
+          
+          notes.unshift(tempNote);
+          renderNotes(notes);
+          
+          // Clear form immediately for better UX
+          noteInput.value = "";
+          charCount.textContent = "0";
+          
+          // Add to Firebase
+          await db.collection("notes").add({
+            text: note,
+            author: currentUserName,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          
+          // Remove pulse animation
+          submitBtn.classList.remove('pulse');
+          
+        } catch (error) {
+          console.error("Error adding note: ", error);
+          // Remove optimistic update if failed
+          notes = notes.filter(note => note.id !== tempId);
+          renderNotes(notes);
+        }
+      }
+    });
+
+    // Delete Note
+    async function deleteNote(id) {
+      if (confirm("Are you sure you want to delete this note?")) {
+        try {
+          // Optimistic deletion - remove immediately from UI
+          const noteIndex = notes.findIndex(note => note.id === id);
+          if (noteIndex !== -1) {
+            const deletedNote = notes.splice(noteIndex, 1)[0];
+            renderNotes(notes);
+            
+            // Try to delete from Firebase
+            await db.collection("notes").doc(id).delete();
+          }
+        } catch (error) {
+          console.error("Error deleting note: ", error);
+          // Re-add note if deletion failed
+          if (deletedNote) {
+            notes.splice(noteIndex, 0, deletedNote);
+            renderNotes(notes);
+          }
+        }
+      }
+    }
+
+    // Sort notes
+    function sortNotes(notes, sortBy) {
+      return notes.sort((a, b) => {
+        const aTime = a.timestamp ? a.timestamp.toDate().getTime() : 0;
+        const bTime = b.timestamp ? b.timestamp.toDate().getTime() : 0;
+        
+        if (sortBy === "newest") {
+          return bTime - aTime;
+        } else {
+          return aTime - bTime;
+        }
+      });
+    }
+
+    // Render notes
+    function renderNotes(notesToRender) {
+      if (notesToRender.length === 0) {
+        notesDiv.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-sticky-note"></i>
+            <h3>No notes yet</h3>
+            <p>Be the first to share a note!</p>
+          </div>
+        `;
+        notesCount.textContent = "0 notes";
+        return;
+      }
+      
+      const sortedNotes = sortNotes([...notesToRender], currentSort);
+      
+      // Use DocumentFragment for batch DOM updates
+      const fragment = document.createDocumentFragment();
+      
+      sortedNotes.forEach(note => {
+        const noteElement = document.createElement('div');
+        noteElement.className = 'note';
+        noteElement.setAttribute('data-id', note.id);
+        
+        noteElement.innerHTML = `
+          <div class="note-content">${note.text}</div>
+          <div class="note-meta">
+            <div>
+              <span class="note-author">By ${note.author}</span>
+              <span class="note-date"> • ${formatDate(note.timestamp)}</span>
+            </div>
+            <div class="note-actions">
+              <button class="btn btn-danger btn-small" onclick="deleteNote('${note.id}')">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+            </div>
+          </div>
+        `;
+        
+        fragment.appendChild(noteElement);
+      });
+      
+      // Single DOM update
+      notesDiv.innerHTML = '';
+      notesDiv.appendChild(fragment);
+      
+      notesCount.textContent = `${notesToRender.length} ${notesToRender.length === 1 ? 'note' : 'notes'}`;
+    }
+
+    // Set up sorting
+    sortButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        sortButtons.forEach(btn => btn.classList.remove("active"));
+        button.classList.add("active");
+        currentSort = button.dataset.sort;
+        
+        // Re-render notes with new sort
+        renderNotes(notes);
       });
     });
 
-    // Remove cursor on disconnect/close
-    window.addEventListener("beforeunload", () => {
-      remove(ref(db, "cursors/" + userId));
+    // Name change functionality
+    changeNameBtn.addEventListener('click', () => {
+      nameInput.value = currentUserName;
+      nameModal.classList.add('active');
+      nameInput.focus();
     });
 
-    // Random color for each user cursor
-    const colors = ["red", "blue", "green", "purple", "orange"];
-    const cursorColor = colors[Math.floor(Math.random() * colors.length)];
-
-    // Cursor elements
-    const cursors = {};
-
-    // Listen for cursor updates
-    onValue(ref(db, "cursors"), (snapshot) => {
-      const data = snapshot.val() || {};
-
-      // Create/update cursors
-      for (let id in data) {
-        if (!cursors[id]) {
-          const el = document.createElement("div");
-          el.className = "cursor";
-          el.style.background = data[id].color;
-          document.body.appendChild(el);
-          cursors[id] = el;
-        }
-        cursors[id].style.left = data[id].x + "px";
-        cursors[id].style.top = data[id].y + "px";
+    saveNameBtn.addEventListener('click', () => {
+      const newName = nameInput.value.trim();
+      if (newName) {
+        currentUserName = newName;
+        localStorage.setItem('userName', newName);
+        initializeUserName();
+        nameModal.classList.remove('active');
       }
+    });
 
-      // Remove old cursors
-      for (let id in cursors) {
-        if (!data[id]) {
-          cursors[id].remove();
-          delete cursors[id];
-        }
+    cancelNameBtn.addEventListener('click', () => {
+      nameModal.classList.remove('active');
+    });
+
+    // Close modal when clicking outside
+    nameModal.addEventListener('click', (e) => {
+      if (e.target === nameModal) {
+        nameModal.classList.remove('active');
+      }
+    });
+
+    // Show Notes in Real-time
+    unsubscribe = db.collection("notes")
+      .orderBy("timestamp", "desc")
+      .limit(50)
+      .onSnapshot(snapshot => {
+        notes = [];
+        snapshot.forEach(doc => {
+          notes.push({ id: doc.id, ...doc.data() });
+        });
+        renderNotes(notes);
+        
+        // Update status
+        statusText.textContent = `Live updates active • ${notes.length} notes`;
+      }, error => {
+        console.error("Error fetching notes: ", error);
+        notesDiv.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Connection issue</h3>
+            <p>Notes will appear when connection is restored</p>
+          </div>
+        `;
+        statusText.textContent = "Offline - reconnecting...";
+      });
+
+    // Initialize the app
+    initializeUserName();
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+      if (unsubscribe) {
+        unsubscribe();
       }
     });
   </script>
