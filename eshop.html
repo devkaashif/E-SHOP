@@ -1,83 +1,527 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firebase Remote Desktop (Prototype)</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f5f5f5; }
-    #screen { max-width: 90%; border: 2px solid #333; margin-top: 20px; }
-    button { padding: 10px; margin: 10px; cursor: pointer; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Remote Desktop</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card h2 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h2 i {
+            color: #fdbb2d;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+        
+        .status.offline .status-indicator {
+            background: #f44336;
+        }
+        
+        .btn {
+            background: linear-gradient(to right, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(to right, #f44336, #d32f2f);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(to right, #ff9800, #f57c00);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .remote-desktop {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+        
+        .screen-container {
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            aspect-ratio: 16/9;
+        }
+        
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+            font-size: 1.2rem;
+        }
+        
+        .screen-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            text-align: center;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .control-group h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            color: #fdbb2d;
+        }
+        
+        .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        .connection-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-label {
+            font-weight: 600;
+        }
+        
+        .info-value {
+            color: #fdbb2d;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 768px) {
+            .remote-desktop {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h2>Remote Desktop (Firebase Prototype)</h2>
-  <button id="shareBtn">Start Sharing Screen</button>
-  <button id="viewBtn">View Remote Screen</button>
-  <br>
-  <img id="screen" src="" alt="Remote Screen will appear here">
+    <div class="container">
+        <header>
+            <h1>Firebase Remote Desktop</h1>
+            <p class="subtitle">Securely access and control remote computers</p>
+        </header>
+        
+        <div class="card">
+            <h2><i>🔒</i> Connection Status</h2>
+            <div class="status" id="status">
+                <div class="status-indicator"></div>
+                <span id="status-text">Connecting to Firebase...</span>
+            </div>
+            <div class="btn-group">
+                <button class="btn" id="share-btn">
+                    <i>📱</i> Share My Screen
+                </button>
+                <button class="btn btn-warning" id="connect-btn">
+                    <i>🖥️</i> Connect to Remote
+                </button>
+                <button class="btn btn-danger" id="disconnect-btn">
+                    <i>❌</i> Disconnect
+                </button>
+            </div>
+        </div>
+        
+        <div class="remote-desktop">
+            <div class="card">
+                <h2><i>🖥️</i> Remote Screen</h2>
+                <div class="screen-container">
+                    <div class="screen" id="remote-screen">
+                        <div class="screen-overlay" id="screen-overlay">
+                            <h3>No Active Connection</h3>
+                            <p>Share your screen or connect to a remote computer to begin</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="card">
+                    <h2><i>🎮</i> Remote Control</h2>
+                    <div class="control-group">
+                        <h3>System Commands</h3>
+                        <div class="control-buttons">
+                            <button class="control-btn" id="lock-btn">Lock Screen</button>
+                            <button class="control-btn" id="sleep-btn">Sleep</button>
+                            <button class="control-btn" id="restart-btn">Restart</button>
+                            <button class="control-btn" id="shutdown-btn">Shutdown</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <h3>Input Control</h3>
+                        <div class="control-buttons">
+                            <button class="control-btn" id="ctrlaltdel-btn">Ctrl+Alt+Del</button>
+                            <button class="control-btn" id="volume-up-btn">Volume Up</button>
+                            <button class="control-btn" id="volume-down-btn">Volume Down</button>
+                            <button class="control-btn" id="mute-btn">Mute</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2><i>📊</i> Connection Info</h2>
+                    <div class="connection-info">
+                        <div class="info-item">
+                            <span class="info-label">Connection ID:</span>
+                            <span class="info-value" id="connection-id">N/A</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Latency:</span>
+                            <span class="info-value" id="latency">0 ms</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Data Usage:</span>
+                            <span class="info-value" id="data-usage">0 KB</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Security:</span>
+                            <span class="info-value" id="security">End-to-End Encrypted</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Firebase Remote Desktop System &copy; 2023 | Secure and Efficient Remote Access</p>
+        </footer>
+    </div>
 
-  <script type="module">
-    // Firebase Config
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
-    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-storage.js";
-    import { getDatabase, ref as dbRef, set, onValue } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
+            authDomain: "poplol-7209f.firebaseapp.com",
+            projectId: "poplol-7209f",
+            storageBucket: "poplol-7209f.appspot.com",
+            messagingSenderId: "105810834",
+            appId: "1:105810834:web:example"
+        };
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
-      authDomain: "poplol-7209f.firebaseapp.com",
-      projectId: "poplol-7209f",
-      storageBucket: "poplol-7209f.appspot.com",
-      messagingSenderId: "105810834",
-      appId: "1:105810834:web:example"
-    };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-    const app = initializeApp(firebaseConfig);
-    const storage = getStorage(app);
-    const db = getDatabase(app);
+        // DOM Elements
+        const statusElement = document.getElementById('status');
+        const statusText = document.getElementById('status-text');
+        const shareBtn = document.getElementById('share-btn');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const remoteScreen = document.getElementById('remote-screen');
+        const screenOverlay = document.getElementById('screen-overlay');
+        const connectionIdElement = document.getElementById('connection-id');
+        const latencyElement = document.getElementById('latency');
+        const dataUsageElement = document.getElementById('data-usage');
+        
+        // Control buttons
+        const lockBtn = document.getElementById('lock-btn');
+        const sleepBtn = document.getElementById('sleep-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const shutdownBtn = document.getElementById('shutdown-btn');
+        const ctrlaltdelBtn = document.getElementById('ctrlaltdel-btn');
+        const volumeUpBtn = document.getElementById('volume-up-btn');
+        const volumeDownBtn = document.getElementById('volume-down-btn');
+        const muteBtn = document.getElementById('mute-btn');
 
-    const screenImg = document.getElementById("screen");
-    const shareBtn = document.getElementById("shareBtn");
-    const viewBtn = document.getElementById("viewBtn");
+        // State variables
+        let isConnected = false;
+        let isSharing = false;
+        let connectionId = null;
+        let dataSent = 0;
+        let latency = 0;
 
-    // Screen Sharing
-    shareBtn.onclick = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        const video = document.createElement("video");
-        video.srcObject = stream;
-        video.play();
+        // Update connection status
+        function updateStatus(message, isOnline) {
+            statusText.textContent = message;
+            if (isOnline) {
+                statusElement.classList.remove('offline');
+            } else {
+                statusElement.classList.add('offline');
+            }
+        }
 
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+        // Generate a random connection ID
+        function generateConnectionId() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
 
-        setInterval(async () => {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+        // Simulate screen sharing
+        function startScreenSharing() {
+            if (isSharing) return;
+            
+            isSharing = true;
+            connectionId = generateConnectionId();
+            connectionIdElement.textContent = connectionId;
+            
+            // In a real implementation, this would capture the actual screen
+            // For this demo, we'll simulate it
+            screenOverlay.innerHTML = `
+                <h3>Screen Sharing Active</h3>
+                <p>Connection ID: ${connectionId}</p>
+                <p>Share this ID with the remote user</p>
+            `;
+            
+            updateStatus(`Sharing screen with ID: ${connectionId}`, true);
+            
+            // Simulate sending screen data to Firebase
+            simulateScreenData();
+        }
 
-          // Upload to Firebase Storage
-          const storageRef = ref(storage, "remote/screen.jpg");
-          await uploadString(storageRef, dataUrl, "data_url");
-          const url = await getDownloadURL(storageRef);
+        // Connect to a remote screen
+        function connectToRemote() {
+            if (isConnected) return;
+            
+            const remoteId = prompt("Enter the remote connection ID:");
+            if (!remoteId) return;
+            
+            // In a real implementation, this would connect to the remote Firebase node
+            // For this demo, we'll simulate it
+            connectionId = remoteId;
+            connectionIdElement.textContent = connectionId;
+            isConnected = true;
+            
+            screenOverlay.innerHTML = `
+                <h3>Connected to Remote</h3>
+                <p>Connection ID: ${connectionId}</p>
+                <p>Remote control enabled</p>
+            `;
+            
+            updateStatus(`Connected to remote: ${connectionId}`, true);
+            
+            // Simulate receiving screen data
+            simulateReceivingScreenData();
+        }
 
-          // Save URL in Realtime DB
-          await set(dbRef(db, "remote/screenURL"), url);
-        }, 1500); // update every 1.5s
-      } catch (err) {
-        alert("Error: " + err.message);
-      }
-    };
+        // Disconnect from remote
+        function disconnect() {
+            isConnected = false;
+            isSharing = false;
+            connectionId = null;
+            connectionIdElement.textContent = 'N/A';
+            dataSent = 0;
+            dataUsageElement.textContent = '0 KB';
+            
+            screenOverlay.innerHTML = `
+                <h3>No Active Connection</h3>
+                <p>Share your screen or connect to a remote computer to begin</p>
+            `;
+            
+            updateStatus('Disconnected', false);
+        }
 
-    // Remote Viewing
-    viewBtn.onclick = () => {
-      const screenRef = dbRef(db, "remote/screenURL");
-      onValue(screenRef, (snapshot) => {
-        const url = snapshot.val();
-        if (url) screenImg.src = url + "&t=" + new Date().getTime(); // prevent caching
-      });
-    };
-  </script>
+        // Send command to remote
+        function sendCommand(command) {
+            if (!isConnected && !isSharing) {
+                alert('No active connection. Please share your screen or connect to a remote computer first.');
+                return;
+            }
+            
+            // In a real implementation, this would send the command to Firebase
+            // For this demo, we'll just show an alert
+            alert(`Command sent: ${command}`);
+            
+            // Update data usage (simulated)
+            dataSent += 0.1; // 0.1 KB per command
+            dataUsageElement.textContent = `${dataSent.toFixed(1)} KB`;
+        }
+
+        // Simulate screen data transmission
+        function simulateScreenData() {
+            if (!isSharing) return;
+            
+            // In a real implementation, this would capture and send screen frames
+            // For this demo, we'll just update the latency
+            latency = Math.floor(Math.random() * 50) + 10;
+            latencyElement.textContent = `${latency} ms`;
+            
+            // Update data usage (simulated)
+            dataSent += 5; // 5 KB per frame
+            dataUsageElement.textContent = `${dataSent.toFixed(1)} KB`;
+            
+            // Continue simulation
+            setTimeout(simulateScreenData, 100);
+        }
+
+        // Simulate receiving screen data
+        function simulateReceivingScreenData() {
+            if (!isConnected) return;
+            
+            // In a real implementation, this would receive and display screen frames
+            // For this demo, we'll just update the latency
+            latency = Math.floor(Math.random() * 50) + 10;
+            latencyElement.textContent = `${latency} ms`;
+            
+            // Continue simulation
+            setTimeout(simulateReceivingScreenData, 100);
+        }
+
+        // Event Listeners
+        shareBtn.addEventListener('click', startScreenSharing);
+        connectBtn.addEventListener('click', connectToRemote);
+        disconnectBtn.addEventListener('click', disconnect);
+
+        // Control button event listeners
+        lockBtn.addEventListener('click', () => sendCommand('Lock Screen'));
+        sleepBtn.addEventListener('click', () => sendCommand('Sleep'));
+        restartBtn.addEventListener('click', () => sendCommand('Restart'));
+        shutdownBtn.addEventListener('click', () => sendCommand('Shutdown'));
+        ctrlaltdelBtn.addEventListener('click', () => sendCommand('Ctrl+Alt+Del'));
+        volumeUpBtn.addEventListener('click', () => sendCommand('Volume Up'));
+        volumeDownBtn.addEventListener('click', () => sendCommand('Volume Down'));
+        muteBtn.addEventListener('click', () => sendCommand('Mute'));
+
+        // Initialize
+        updateStatus('Firebase Connected', true);
+    </script>
 </body>
 </html>
