@@ -57,7 +57,6 @@
     let currentUser = null;
     let allCodes = [];
     let comments = {}; // Store comments by code ID
-    let commentListeners = {}; // Store comment listeners
 
     // Initialize App
     function initApp() {
@@ -405,14 +404,12 @@
     }
 
     // Comment System
-    function loadAllComments() {
-      // Set up real-time listener for all comments
-      const commentsQuery = query(collection(db, "comments"), orderBy("createdAt", "asc"));
+    async function loadAllComments() {
+      comments = {};
       
-      onSnapshot(commentsQuery, (snapshot) => {
-        comments = {};
-        
-        snapshot.forEach((doc) => {
+      try {
+        const commentsSnapshot = await getDocs(collection(db, "comments"));
+        commentsSnapshot.forEach((doc) => {
           const comment = doc.data();
           const codeId = comment.codeId;
           
@@ -426,47 +423,36 @@
           });
         });
         
+        // Sort comments by date for each code
+        Object.keys(comments).forEach(codeId => {
+          comments[codeId].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
+        
         // Update UI with comment counts
         updateCommentCounts();
-        
-        // Update any open comment sections
-        updateOpenCommentSections();
-      }, (error) => {
+      } catch (error) {
         console.error("Error loading comments:", error);
-      });
+      }
     }
 
-    function setupCommentsListener(codeId) {
-      // If we already have a listener for this code, don't set up another one
-      if (commentListeners[codeId]) return;
-      
-      const q = query(
-        collection(db, "comments"), 
-        where("codeId", "==", codeId), 
-        orderBy("createdAt", "asc")
-      );
-      
-      commentListeners[codeId] = onSnapshot(q, (snapshot) => {
+    async function loadCommentsForCode(codeId) {
+      try {
+        const q = query(collection(db, "comments"), where("codeId", "==", codeId), orderBy("createdAt", "asc"));
+        const querySnapshot = await getDocs(q);
+        
         comments[codeId] = [];
-        snapshot.forEach((doc) => {
+        querySnapshot.forEach((doc) => {
           comments[codeId].push({
             id: doc.id,
             ...doc.data()
           });
         });
         
-        // Update the comment section if it's open
-        const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
-        if (card) {
-          const commentsSection = card.querySelector('.comments-section');
-          if (commentsSection && commentsSection.style.display === 'block') {
-            renderComments(codeId);
-          }
-        }
-        
-        // Update comment count
-        updateCommentCounts();
-      });
+        return comments[codeId];
+      } catch (error) {
+        console.error("Error loading comments for code:", error);
+        return [];
+      }
     }
 
     async function addComment(codeId, commentText) {
@@ -500,6 +486,12 @@
 
       try {
         await deleteDoc(doc(db, "comments", commentId));
+        
+        // Remove from local state
+        if (comments[codeId]) {
+          comments[codeId] = comments[codeId].filter(comment => comment.id !== commentId);
+        }
+        
         showNotification('Comment deleted', 'success');
         return true;
       } catch (error) {
@@ -526,15 +518,6 @@
       });
     }
 
-    function updateOpenCommentSections() {
-      document.querySelectorAll('.comments-section').forEach(section => {
-        if (section.style.display === 'block') {
-          const codeId = section.closest('.code-card').dataset.id;
-          renderComments(codeId);
-        }
-      });
-    }
-
     function toggleComments(codeId) {
       const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
       const commentsSection = card.querySelector('.comments-section');
@@ -553,11 +536,12 @@
       `;
       commentsSection.style.display = 'block';
       
-      // Set up real-time listener for this code's comments
-      setupCommentsListener(codeId);
-      
-      // Render comments immediately if we have them
-      if (comments[codeId]) {
+      // Load comments if not already loaded
+      if (!comments[codeId]) {
+        loadCommentsForCode(codeId).then(() => {
+          renderComments(codeId);
+        });
+      } else {
         renderComments(codeId);
       }
     }
@@ -605,7 +589,10 @@
       const success = await addComment(codeId, commentText);
       if (success) {
         commentInput.value = '';
-        // The real-time listener will automatically update the comments
+        // Reload comments for this code
+        await loadCommentsForCode(codeId);
+        renderComments(codeId);
+        updateCommentCounts();
       }
     }
 
