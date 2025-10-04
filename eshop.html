@@ -56,7 +56,7 @@
     // State
     let currentUser = null;
     let allCodes = [];
-    let commentsMap = new Map(); // Store comments by post ID
+    let comments = {}; // Store comments by code ID
 
     // Initialize App
     function initApp() {
@@ -224,7 +224,6 @@
           likes: 0,
           dislikes: 0,
           views: 0,
-          commentsCount: 0,
           userId: currentUser.id,
           userName: currentUser.name,
           createdAt: new Date().toISOString(),
@@ -273,6 +272,9 @@
         renderCodes(allCodes);
         showLoading(false);
         updateStats();
+        
+        // Load comments for all codes
+        loadAllComments();
         
         // Show helpful tip if no codes
         if (allCodes.length === 0) {
@@ -350,148 +352,6 @@
       }
     }
 
-    // Comment System
-    async function toggleComments(codeId) {
-      const commentsSection = document.getElementById(`comments-${codeId}`);
-      
-      if (commentsSection.style.display === 'block') {
-        commentsSection.style.display = 'none';
-        return;
-      }
-      
-      // Load comments if not already loaded
-      if (!commentsMap.has(codeId)) {
-        await loadComments(codeId);
-      }
-      
-      commentsSection.style.display = 'block';
-    }
-
-    async function loadComments(codeId) {
-      try {
-        const q = query(
-          collection(db, "comments"), 
-          where("postId", "==", codeId),
-          orderBy("createdAt", "asc")
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const comments = [];
-        
-        querySnapshot.forEach((doc) => {
-          comments.push({ id: doc.id, ...doc.data() });
-        });
-        
-        commentsMap.set(codeId, comments);
-        renderComments(codeId);
-      } catch (error) {
-        console.error("Error loading comments:", error);
-        showNotification('Error loading comments', 'error');
-      }
-    }
-
-    async function addComment(codeId) {
-      const commentInput = document.getElementById(`comment-input-${codeId}`);
-      const commentText = commentInput.value.trim();
-      
-      if (!commentText) {
-        showNotification('Please enter a comment', 'warning');
-        return;
-      }
-      
-      try {
-        await addDoc(collection(db, "comments"), {
-          postId: codeId,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          text: commentText,
-          createdAt: new Date().toISOString()
-        });
-        
-        // Update comment count
-        const ref = doc(db, "codes", codeId);
-        await updateDoc(ref, { 
-          commentsCount: increment(1),
-          lastModified: new Date().toISOString()
-        });
-        
-        commentInput.value = '';
-        showNotification('Comment added!', 'success');
-        
-        // Reload comments
-        await loadComments(codeId);
-      } catch (error) {
-        console.error("Error adding comment:", error);
-        showNotification('Error adding comment', 'error');
-      }
-    }
-
-    async function deleteComment(commentId, codeId) {
-      if (!confirm("Are you sure you want to delete this comment?")) {
-        return;
-      }
-      
-      try {
-        await deleteDoc(doc(db, "comments", commentId));
-        
-        // Update comment count
-        const ref = doc(db, "codes", codeId);
-        await updateDoc(ref, { 
-          commentsCount: increment(-1),
-          lastModified: new Date().toISOString()
-        });
-        
-        showNotification('Comment deleted', 'success');
-        
-        // Reload comments
-        await loadComments(codeId);
-      } catch (error) {
-        console.error("Error deleting comment:", error);
-        showNotification('Error deleting comment', 'error');
-      }
-    }
-
-    function renderComments(codeId) {
-      const commentsSection = document.getElementById(`comments-list-${codeId}`);
-      const comments = commentsMap.get(codeId) || [];
-      
-      if (comments.length === 0) {
-        commentsSection.innerHTML = `
-          <div class="empty-comments">
-            <i class="fas fa-comment-slash"></i>
-            <p>No comments yet. Be the first to comment!</p>
-          </div>
-        `;
-        return;
-      }
-      
-      commentsSection.innerHTML = comments.map(comment => {
-        const isOwner = comment.userId === currentUser.id;
-        
-        return `
-          <div class="comment" data-id="${comment.id}">
-            <div class="comment-header">
-              <div class="comment-author">
-                <i class="fas fa-user"></i>
-                ${escapeHtml(comment.userName)}
-              </div>
-              <div class="comment-date">
-                ${formatDate(comment.createdAt)}
-              </div>
-              ${isOwner ? `
-                <button class="btn-icon delete-comment-btn" onclick="deleteComment('${comment.id}', '${codeId}')" title="Delete comment">
-                  <i class="fas fa-trash"></i>
-                </button>
-              ` : ''}
-            </div>
-            <div class="comment-text">
-              ${escapeHtml(comment.text)}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
     // Filtering & Sorting
     function filterCodes() {
       const searchTerm = searchInput.value.toLowerCase();
@@ -538,12 +398,202 @@
         case 'most_viewed':
           sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
           break;
-        case 'most_commented':
-          sorted.sort((a, b) => (b.commentsCount || 0) - (a.commentsCount || 0));
-          break;
       }
       
       renderCodes(sorted);
+    }
+
+    // Comment System
+    async function loadAllComments() {
+      comments = {};
+      
+      try {
+        const commentsSnapshot = await getDocs(collection(db, "comments"));
+        commentsSnapshot.forEach((doc) => {
+          const comment = doc.data();
+          const codeId = comment.codeId;
+          
+          if (!comments[codeId]) {
+            comments[codeId] = [];
+          }
+          
+          comments[codeId].push({
+            id: doc.id,
+            ...comment
+          });
+        });
+        
+        // Sort comments by date for each code
+        Object.keys(comments).forEach(codeId => {
+          comments[codeId].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
+        
+        // Update UI with comment counts
+        updateCommentCounts();
+      } catch (error) {
+        console.error("Error loading comments:", error);
+      }
+    }
+
+    async function loadCommentsForCode(codeId) {
+      try {
+        const q = query(collection(db, "comments"), where("codeId", "==", codeId), orderBy("createdAt", "asc"));
+        const querySnapshot = await getDocs(q);
+        
+        comments[codeId] = [];
+        querySnapshot.forEach((doc) => {
+          comments[codeId].push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        return comments[codeId];
+      } catch (error) {
+        console.error("Error loading comments for code:", error);
+        return [];
+      }
+    }
+
+    async function addComment(codeId, commentText) {
+      if (!commentText.trim()) {
+        showNotification('Please enter a comment', 'warning');
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "comments"), {
+          codeId: codeId,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          text: commentText.trim(),
+          createdAt: new Date().toISOString()
+        });
+        
+        showNotification('Comment added!', 'success');
+        return true;
+      } catch (error) {
+        console.error("Error adding comment:", error);
+        showNotification('Error adding comment', 'error');
+        return false;
+      }
+    }
+
+    async function deleteComment(commentId, codeId) {
+      if (!confirm("Are you sure you want to delete this comment?")) {
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "comments", commentId));
+        
+        // Remove from local state
+        if (comments[codeId]) {
+          comments[codeId] = comments[codeId].filter(comment => comment.id !== commentId);
+        }
+        
+        showNotification('Comment deleted', 'success');
+        return true;
+      } catch (error) {
+        console.error("Error deleting comment:", error);
+        showNotification('Error deleting comment', 'error');
+        return false;
+      }
+    }
+
+    function updateCommentCounts() {
+      document.querySelectorAll('.code-card').forEach(card => {
+        const codeId = card.dataset.id;
+        const commentCount = comments[codeId] ? comments[codeId].length : 0;
+        const commentBtn = card.querySelector('.comment-btn');
+        
+        if (commentBtn) {
+          const countSpan = commentBtn.querySelector('.comment-count');
+          if (countSpan) {
+            countSpan.textContent = commentCount;
+          } else {
+            commentBtn.innerHTML += `<span class="comment-count">${commentCount}</span>`;
+          }
+        }
+      });
+    }
+
+    function toggleComments(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentsSection = card.querySelector('.comments-section');
+      
+      if (commentsSection.style.display === 'block') {
+        commentsSection.style.display = 'none';
+        return;
+      }
+      
+      // Show loading
+      commentsSection.innerHTML = `
+        <div class="comments-loading">
+          <div class="spinner"></div>
+          <span>Loading comments...</span>
+        </div>
+      `;
+      commentsSection.style.display = 'block';
+      
+      // Load comments if not already loaded
+      if (!comments[codeId]) {
+        loadCommentsForCode(codeId).then(() => {
+          renderComments(codeId);
+        });
+      } else {
+        renderComments(codeId);
+      }
+    }
+
+    function renderComments(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentsSection = card.querySelector('.comments-section');
+      const codeComments = comments[codeId] || [];
+      
+      commentsSection.innerHTML = `
+        <div class="comments-header">
+          <h4>Comments (${codeComments.length})</h4>
+        </div>
+        <div class="comments-list">
+          ${codeComments.length > 0 ? 
+            codeComments.map(comment => `
+              <div class="comment" data-id="${comment.id}">
+                <div class="comment-header">
+                  <span class="comment-author">${escapeHtml(comment.userName)}</span>
+                  <span class="comment-date">${formatDate(comment.createdAt)}</span>
+                  ${comment.userId === currentUser.id ? `
+                    <button class="btn-icon delete-comment-btn" onclick="deleteComment('${comment.id}', '${codeId}')" title="Delete comment">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  ` : ''}
+                </div>
+                <div class="comment-text">${escapeHtml(comment.text)}</div>
+              </div>
+            `).join('') : 
+            '<div class="no-comments">No comments yet. Be the first to comment!</div>'
+          }
+        </div>
+        <div class="add-comment">
+          <textarea class="comment-input" placeholder="Add a comment..." rows="2"></textarea>
+          <button class="btn btn-primary btn-sm" onclick="submitComment('${codeId}')">Post Comment</button>
+        </div>
+      `;
+    }
+
+    async function submitComment(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentInput = card.querySelector('.comment-input');
+      const commentText = commentInput.value;
+      
+      const success = await addComment(codeId, commentText);
+      if (success) {
+        commentInput.value = '';
+        // Reload comments for this code
+        await loadCommentsForCode(codeId);
+        renderComments(codeId);
+        updateCommentCounts();
+      }
     }
 
     // Rendering
@@ -564,7 +614,7 @@
         const netScore = code.likes - code.dislikes;
         const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
         const views = code.views || 0;
-        const commentsCount = code.commentsCount || 0;
+        const commentCount = comments[code.id] ? comments[code.id].length : 0;
         
         return `
           <div class="code-card" data-id="${code.id}">
@@ -621,9 +671,9 @@
                   <i class="fas fa-thumbs-down"></i>
                   <span>${code.dislikes || 0}</span>
                 </button>
-                <button class="comment-btn" onclick="toggleComments('${code.id}')">
+                <button class="vote-btn comment-btn" onclick="toggleComments('${code.id}')">
                   <i class="fas fa-comment"></i>
-                  <span>${commentsCount}</span>
+                  <span class="comment-count">${commentCount}</span>
                 </button>
               </div>
               <div class="engagement-hint">
@@ -631,27 +681,7 @@
               </div>
             </div>
             
-            <!-- Comments Section -->
-            <div class="comments-section" id="comments-${code.id}" style="display: none;">
-              <div class="comments-header">
-                <h4>Comments (${commentsCount})</h4>
-              </div>
-              <div class="comments-list" id="comments-list-${code.id}">
-                <div class="loading-comments">
-                  <i class="fas fa-spinner fa-spin"></i> Loading comments...
-                </div>
-              </div>
-              <div class="add-comment">
-                <textarea 
-                  id="comment-input-${code.id}" 
-                  placeholder="Add a comment..." 
-                  rows="2"
-                ></textarea>
-                <button class="btn btn-primary" onclick="addComment('${code.id}')">
-                  <i class="fas fa-paper-plane"></i> Comment
-                </button>
-              </div>
-            </div>
+            <div class="comments-section" style="display: none;"></div>
           </div>
         `;
       }).join('');
@@ -754,12 +784,13 @@
         totalCodes: allCodes.length,
         totalLikes: allCodes.reduce((sum, code) => sum + (code.likes || 0), 0),
         totalViews: allCodes.reduce((sum, code) => sum + (code.views || 0), 0),
-        totalComments: allCodes.reduce((sum, code) => sum + (code.commentsCount || 0), 0)
+        totalComments: Object.values(comments).reduce((sum, codeComments) => sum + codeComments.length, 0)
       };
       
       document.getElementById('totalCodes').textContent = stats.totalCodes;
       document.getElementById('totalLikes').textContent = stats.totalLikes;
       document.getElementById('totalViews').textContent = stats.totalViews;
+      document.getElementById('totalComments').textContent = stats.totalComments;
     }
 
     function loadStats() {
@@ -773,7 +804,7 @@
     window.copyCode = copyCode;
     window.filterCodes = filterCodes;
     window.toggleComments = toggleComments;
-    window.addComment = addComment;
+    window.submitComment = submitComment;
     window.deleteComment = deleteComment;
 
     // Initialize app when DOM is loaded
@@ -959,6 +990,11 @@
     .btn-secondary:hover {
       background: white;
       color: var(--primary);
+    }
+
+    .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
     }
 
     /* Quick Actions */
@@ -1278,18 +1314,6 @@
       transform: scale(1.05);
     }
 
-    .comment-btn {
-      background: none;
-      border: 1px solid var(--border-color);
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
     .comment-btn:hover {
       border-color: var(--primary);
       color: var(--primary);
@@ -1318,6 +1342,15 @@
       background: rgba(173, 181, 189, 0.1);
     }
 
+    .comment-count {
+      background: var(--primary);
+      color: white;
+      border-radius: 10px;
+      padding: 0.1rem 0.4rem;
+      font-size: 0.7rem;
+      margin-left: 0.25rem;
+    }
+
     .engagement-hint {
       font-size: 0.8rem;
       color: var(--text-secondary);
@@ -1327,8 +1360,8 @@
     /* Comments Section */
     .comments-section {
       margin-top: 1.5rem;
-      padding-top: 1.5rem;
       border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
     }
 
     .comments-header {
@@ -1347,10 +1380,10 @@
     }
 
     .comment {
-      padding: 1rem;
-      border-radius: 8px;
       background: var(--bg-secondary);
-      margin-bottom: 0.75rem;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
     }
 
     .comment-header {
@@ -1362,10 +1395,7 @@
 
     .comment-author {
       font-weight: 600;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      color: var(--primary);
     }
 
     .comment-date {
@@ -1378,34 +1408,40 @@
       line-height: 1.5;
     }
 
-    .add-comment {
-      display: flex;
-      gap: 0.75rem;
-      align-items: flex-end;
+    .no-comments {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 1rem;
+      font-style: italic;
     }
 
-    .add-comment textarea {
-      flex: 1;
+    .add-comment {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .comment-input {
+      width: 100%;
       resize: vertical;
       min-height: 60px;
     }
 
-    .empty-comments {
-      text-align: center;
-      padding: 2rem;
-      color: var(--text-secondary);
-    }
-
-    .empty-comments i {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-      opacity: 0.5;
-    }
-
-    .loading-comments {
-      text-align: center;
+    .comments-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
       padding: 1rem;
       color: var(--text-secondary);
+    }
+
+    .delete-comment-btn {
+      color: var(--danger);
+    }
+
+    .delete-comment-btn:hover {
+      background: rgba(230, 57, 70, 0.1);
     }
 
     /* Notifications */
@@ -1527,13 +1563,8 @@
         text-align: center;
       }
       
-      .add-comment {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      
-      .add-comment button {
-        align-self: flex-end;
+      .vote-section {
+        justify-content: center;
       }
     }
 
@@ -1649,6 +1680,10 @@
         <span class="stat-number" id="totalViews">0</span>
         <span class="stat-label">Total Views</span>
       </div>
+      <div class="stat-card">
+        <span class="stat-number" id="totalComments">0</span>
+        <span class="stat-label">Total Comments</span>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -1672,7 +1707,6 @@
             <option value="popular">Most Popular</option>
             <option value="most_liked">Most Liked</option>
             <option value="most_viewed">Most Viewed</option>
-            <option value="most_commented">Most Commented</option>
           </select>
         </div>
         <button class="btn btn-primary" onclick="filterCodes()">
