@@ -50,65 +50,20 @@
     const loadingSpinner = document.getElementById('loadingSpinner');
     const userNameInput = document.getElementById('userName');
     const quickActions = document.getElementById('quickActions');
-    const onboarding = document.getElementById('onboarding');
-    const skipOnboarding = document.getElementById('skipOnboarding');
-    const nextOnboarding = document.getElementById('nextOnboarding');
-    const onboardingSteps = document.querySelectorAll('.onboarding-step');
-    const getStartedBtn = document.getElementById('getStartedBtn');
 
     // State
     let currentUser = null;
     let allCodes = [];
-    let currentOnboardingStep = 0;
-    let isFirstVisit = true;
 
     // Initialize App
     function initApp() {
       loadUserProfile();
       setupEventListeners();
       loadLanguages();
-      checkFirstVisit();
+      loadStats();
       
       // Auto-detect code language from input
       setupLanguageDetection();
-    }
-
-    // Check if this is user's first visit
-    function checkFirstVisit() {
-      const hasVisited = localStorage.getItem('hasVisited');
-      if (!hasVisited) {
-        showOnboarding();
-        localStorage.setItem('hasVisited', 'true');
-      } else {
-        loadStats();
-      }
-    }
-
-    // Show onboarding tour
-    function showOnboarding() {
-      onboarding.classList.add('active');
-      showOnboardingStep(0);
-    }
-
-    function showOnboardingStep(step) {
-      onboardingSteps.forEach((s, index) => {
-        s.classList.toggle('active', index === step);
-      });
-      currentOnboardingStep = step;
-    }
-
-    function nextOnboardingStep() {
-      if (currentOnboardingStep < onboardingSteps.length - 1) {
-        showOnboardingStep(currentOnboardingStep + 1);
-      } else {
-        completeOnboarding();
-      }
-    }
-
-    function completeOnboarding() {
-      onboarding.classList.remove('active');
-      loadStats();
-      showNotification("Welcome to CodeShare! 🎉 You're all set to start sharing code.", 'success');
     }
 
     // User Management
@@ -203,9 +158,6 @@
       sortSelect.addEventListener('change', sortCodes);
       themeToggle.addEventListener('click', toggleTheme);
       userNameInput.addEventListener('change', saveUserProfile);
-      skipOnboarding.addEventListener('click', completeOnboarding);
-      nextOnboarding.addEventListener('click', nextOnboardingStep);
-      getStartedBtn.addEventListener('click', completeOnboarding);
       
       // Quick actions
       document.getElementById('quickShare').addEventListener('click', () => {
@@ -631,6 +583,11 @@
       document.getElementById('totalCodes').textContent = stats.totalCodes;
       document.getElementById('totalLikes').textContent = stats.totalLikes;
       document.getElementById('totalViews').textContent = stats.totalViews;
+    }
+
+    function loadStats() {
+      // Initialize with current data
+      updateStats();
     }
 
     // Make functions global for onclick handlers
@@ -1169,94 +1126,6 @@
       font-style: italic;
     }
 
-    /* Onboarding */
-    .onboarding {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      backdrop-filter: blur(5px);
-    }
-
-    .onboarding.active {
-      display: flex;
-    }
-
-    .onboarding-content {
-      background: var(--bg-card);
-      border-radius: 20px;
-      padding: 2rem;
-      max-width: 500px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-      position: relative;
-      text-align: center;
-    }
-
-    .onboarding-step {
-      display: none;
-    }
-
-    .onboarding-step.active {
-      display: block;
-      animation: fadeIn 0.5s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .onboarding-icon {
-      font-size: 4rem;
-      color: var(--primary);
-      margin-bottom: 1rem;
-    }
-
-    .onboarding h2 {
-      margin-bottom: 1rem;
-      color: var(--text-primary);
-    }
-
-    .onboarding p {
-      color: var(--text-secondary);
-      margin-bottom: 2rem;
-      line-height: 1.6;
-    }
-
-    .onboarding-buttons {
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-    }
-
-    .onboarding-progress {
-      display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-top: 2rem;
-    }
-
-    .progress-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--border-color);
-      transition: all 0.3s ease;
-    }
-
-    .progress-dot.active {
-      background: var(--primary);
-      transform: scale(1.2);
-    }
-
     /* Notifications */
     #notifications {
       position: fixed;
@@ -1412,65 +1281,6 @@
 <body class="light-theme">
   <!-- Notifications Container -->
   <div id="notifications"></div>
-
-  <!-- Onboarding Tour -->
-  <div id="onboarding" class="onboarding">
-    <div class="onboarding-content">
-      <div class="onboarding-step active">
-        <div class="onboarding-icon">
-          <i class="fas fa-code"></i>
-        </div>
-        <h2>Welcome to CodeShare! 👋</h2>
-        <p>Share your code snippets with the community, discover amazing code from others, and learn together.</p>
-        <div class="onboarding-buttons">
-          <button id="skipOnboarding" class="btn btn-secondary">Skip Tour</button>
-          <button id="nextOnboarding" class="btn btn-primary">Get Started</button>
-        </div>
-      </div>
-      
-      <div class="onboarding-step">
-        <div class="onboarding-icon">
-          <i class="fas fa-upload"></i>
-        </div>
-        <h2>Share Your Code</h2>
-        <p>Easily share code by filling out the simple form. Add a title, paste your code, and select the language.</p>
-        <div class="onboarding-buttons">
-          <button id="skipOnboarding2" class="btn btn-secondary">Skip Tour</button>
-          <button id="nextOnboarding2" class="btn btn-primary">Next</button>
-        </div>
-      </div>
-      
-      <div class="onboarding-step">
-        <div class="onboarding-icon">
-          <i class="fas fa-heart"></i>
-        </div>
-        <h2>Engage with Community</h2>
-        <p>Like helpful code, provide feedback, and copy useful snippets to your projects with one click.</p>
-        <div class="onboarding-buttons">
-          <button id="skipOnboarding3" class="btn btn-secondary">Skip Tour</button>
-          <button id="nextOnboarding3" class="btn btn-primary">Next</button>
-        </div>
-      </div>
-      
-      <div class="onboarding-step">
-        <div class="onboarding-icon">
-          <i class="fas fa-search"></i>
-        </div>
-        <h2>Discover & Learn</h2>
-        <p>Use search and filters to find exactly what you need. Sort by popularity, date, or language.</p>
-        <div class="onboarding-buttons">
-          <button id="getStartedBtn" class="btn btn-primary">Start Sharing Code!</button>
-        </div>
-      </div>
-      
-      <div class="onboarding-progress">
-        <div class="progress-dot active"></div>
-        <div class="progress-dot"></div>
-        <div class="progress-dot"></div>
-        <div class="progress-dot"></div>
-      </div>
-    </div>
-  </div>
 
   <!-- Header -->
   <header class="header">
