@@ -588,10 +588,11 @@
       
       const success = await addComment(codeId, commentText);
       if (success) {
-        // Reload the page after successful comment submission
-        setTimeout(() => {
-          location.reload();
-        }, 1000);
+        commentInput.value = '';
+        // Reload comments for this code
+        await loadCommentsForCode(codeId);
+        renderComments(codeId);
+        updateCommentCounts();
       }
     }
 
