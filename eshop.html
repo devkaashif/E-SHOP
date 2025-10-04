@@ -57,6 +57,7 @@
     let currentUser = null;
     let allCodes = [];
     let comments = {}; // Store comments by code ID
+    let commentListeners = {}; // Store comment listeners for cleanup
 
     // Initialize App
     function initApp() {
@@ -273,8 +274,8 @@
         showLoading(false);
         updateStats();
         
-        // Load comments for all codes
-        loadAllComments();
+        // Setup real-time comment listeners for all codes
+        setupAllCommentListeners();
         
         // Show helpful tip if no codes
         if (allCodes.length === 0) {
@@ -287,6 +288,48 @@
         showNotification('Error loading codes', 'error');
         showLoading(false);
       });
+    }
+
+    // Setup real-time comment listeners for all codes
+    function setupAllCommentListeners() {
+      // Clean up existing listeners
+      Object.values(commentListeners).forEach(unsubscribe => unsubscribe());
+      commentListeners = {};
+      
+      // Setup listeners for each code
+      allCodes.forEach(code => {
+        setupCommentListener(code.id);
+      });
+    }
+
+    // Setup real-time comment listener for a specific code
+    function setupCommentListener(codeId) {
+      const q = query(
+        collection(db, "comments"), 
+        where("codeId", "==", codeId), 
+        orderBy("createdAt", "asc")
+      );
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        comments[codeId] = [];
+        snapshot.forEach((doc) => {
+          comments[codeId].push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        // Update UI if comments are currently visible for this code
+        updateCommentsUI(codeId);
+        
+        // Update comment counts
+        updateCommentCounts();
+        updateStats();
+      }, (error) => {
+        console.error(`Error loading comments for code ${codeId}:`, error);
+      });
+      
+      commentListeners[codeId] = unsubscribe;
     }
 
     // Voting System
@@ -404,57 +447,6 @@
     }
 
     // Comment System
-    async function loadAllComments() {
-      comments = {};
-      
-      try {
-        const commentsSnapshot = await getDocs(collection(db, "comments"));
-        commentsSnapshot.forEach((doc) => {
-          const comment = doc.data();
-          const codeId = comment.codeId;
-          
-          if (!comments[codeId]) {
-            comments[codeId] = [];
-          }
-          
-          comments[codeId].push({
-            id: doc.id,
-            ...comment
-          });
-        });
-        
-        // Sort comments by date for each code
-        Object.keys(comments).forEach(codeId => {
-          comments[codeId].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-        });
-        
-        // Update UI with comment counts
-        updateCommentCounts();
-      } catch (error) {
-        console.error("Error loading comments:", error);
-      }
-    }
-
-    async function loadCommentsForCode(codeId) {
-      try {
-        const q = query(collection(db, "comments"), where("codeId", "==", codeId), orderBy("createdAt", "asc"));
-        const querySnapshot = await getDocs(q);
-        
-        comments[codeId] = [];
-        querySnapshot.forEach((doc) => {
-          comments[codeId].push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-        
-        return comments[codeId];
-      } catch (error) {
-        console.error("Error loading comments for code:", error);
-        return [];
-      }
-    }
-
     async function addComment(codeId, commentText) {
       if (!commentText.trim()) {
         showNotification('Please enter a comment', 'warning');
@@ -486,12 +478,6 @@
 
       try {
         await deleteDoc(doc(db, "comments", commentId));
-        
-        // Remove from local state
-        if (comments[codeId]) {
-          comments[codeId] = comments[codeId].filter(comment => comment.id !== commentId);
-        }
-        
         showNotification('Comment deleted', 'success');
         return true;
       } catch (error) {
@@ -536,18 +522,24 @@
       `;
       commentsSection.style.display = 'block';
       
-      // Load comments if not already loaded
-      if (!comments[codeId]) {
-        loadCommentsForCode(codeId).then(() => {
-          renderComments(codeId);
-        });
-      } else {
+      // Render comments immediately (they should already be loaded via real-time listener)
+      renderComments(codeId);
+    }
+
+    function updateCommentsUI(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      if (!card) return;
+      
+      const commentsSection = card.querySelector('.comments-section');
+      if (commentsSection && commentsSection.style.display === 'block') {
         renderComments(codeId);
       }
     }
 
     function renderComments(codeId) {
       const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      if (!card) return;
+      
       const commentsSection = card.querySelector('.comments-section');
       const codeComments = comments[codeId] || [];
       
@@ -589,10 +581,7 @@
       const success = await addComment(codeId, commentText);
       if (success) {
         commentInput.value = '';
-        // Reload comments for this code
-        await loadCommentsForCode(codeId);
-        renderComments(codeId);
-        updateCommentCounts();
+        // Comments will update automatically via real-time listener
       }
     }
 
