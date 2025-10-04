@@ -1,629 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Firebase Note Sharing</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeShare - Share Code Effortlessly</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary: #6366F1;
-      --primary-dark: #4F46E5;
-      --primary-light: #8B87EA;
-      --secondary: #EC4899;
-      --accent: #10B981;
-      --light: #F8FAFC;
-      --dark: #1E293B;
-      --gray: #64748B;
-      --gray-light: #E2E8F0;
-      --gray-dark: #475569;
-      --success: #10B981;
-      --danger: #EF4444;
-      --warning: #F59E0B;
-      --border-radius: 12px;
-      --border-radius-sm: 8px;
-      --border-radius-lg: 16px;
-      --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      --box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      --transition: all 0.2s ease-in-out;
-      --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
-      color: var(--dark);
-      line-height: 1.6;
-      min-height: 100vh;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      overflow-x: hidden;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 400px;
-      margin: 0 auto;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-      width: 100%;
-    }
-
-    h1 {
-      color: var(--dark);
-      margin-bottom: 12px;
-      font-size: 2.5rem;
-      font-weight: 700;
-      display: inline-block;
-      position: relative;
-    }
-
-    h1::after {
-      content: '';
-      position: absolute;
-      bottom: -8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 80px;
-      height: 4px;
-      background: var(--gradient);
-      border-radius: 2px;
-    }
-    .app-container {
-      background: white;
-      border-radius: var(--border-radius-lg);
-      box-shadow: var(--box-shadow-lg);
-      overflow: hidden;
-      width: 100%;
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .user-profile {
-      padding: 20px;
-      background: var(--light);
-      border-bottom: 1px solid var(--gray-light);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .user-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--gradient);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 600;
-      font-size: 1.1rem;
-    }
-
-    .user-info {
-      flex: 1;
-    }
-
-    .user-name {
-      font-weight: 600;
-      color: var(--dark);
-    }
-
-    .user-status {
-      font-size: 0.8rem;
-      color: var(--gray);
-    }
-
-    .change-name-btn {
-      background: none;
-      border: 1px solid var(--gray-light);
-      padding: 6px 12px;
-      border-radius: var(--border-radius-sm);
-      cursor: pointer;
-      font-size: 0.8rem;
-      color: var(--primary);
-      transition: var(--transition);
-    }
-
-    .change-name-btn:hover {
-      background: var(--primary);
-      color: white;
-    }
-
-    .name-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      opacity: 0;
-      visibility: hidden;
-      transition: var(--transition);
-    }
-
-    .name-modal.active {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .modal-content {
-      background: white;
-      padding: 30px;
-      border-radius: var(--border-radius-lg);
-      box-shadow: var(--box-shadow-lg);
-      width: 90%;
-      max-width: 400px;
-      transform: translateY(20px);
-      transition: var(--transition);
-    }
-
-    .name-modal.active .modal-content {
-      transform: translateY(0);
-    }
-
-    .modal-header {
-      margin-bottom: 20px;
-    }
-
-    .modal-title {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: var(--dark);
-    }
-
-    .modal-input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid var(--gray-light);
-      border-radius: var(--border-radius-sm);
-      font-size: 1rem;
-      margin-bottom: 20px;
-      transition: var(--transition);
-    }
-
-    .modal-input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-
-    .modal-btn {
-      padding: 10px 20px;
-      border-radius: var(--border-radius-sm);
-      border: none;
-      cursor: pointer;
-      font-weight: 500;
-      transition: var(--transition);
-    }
-
-    .modal-btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .modal-btn-primary:hover {
-      background: var(--primary-dark);
-    }
-
-    .modal-btn-secondary {
-      background: var(--gray-light);
-      color: var(--gray-dark);
-    }
-
-    .modal-btn-secondary:hover {
-      background: var(--gray);
-      color: white;
-    }
-
-    .notes-container {
-      padding: 30px;
-      flex: 1;
-      max-height: 400px;
-      overflow-y: auto;
-      position: relative;
-      border-bottom: 1px solid var(--gray-light);
-    }
-
-    .notes-container::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .notes-container::-webkit-scrollbar-track {
-      background: var(--gray-light);
-      border-radius: 10px;
-    }
-
-    .notes-container::-webkit-scrollbar-thumb {
-      background: var(--primary);
-      border-radius: 10px;
-    }
-
-    .notes-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 25px;
-    }
-
-    .notes-count {
-      font-weight: 400;
-      color: var(--gray);
-      background: var(--gray-light);
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-    }
-
-    .sort-options {
-      display: flex;
-      gap: 10px;
-    }
-
-    .sort-btn {
-      background: none;
-      border: 1px solid var(--gray-light);
-      padding: 8px 16px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      transition: var(--transition);
-    }
-
-    .sort-btn.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-
-    .sort-btn:hover:not(.active) {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-
-    .notes-list {
-      display: grid;
-      gap: 20px;
-    }
-
-    .note {
-      background: white;
-      padding: 20px;
-      border-radius: var(--border-radius);
-      box-shadow: var(--box-shadow);
-      transition: var(--transition);
-      position: relative;
-      border-left: 4px solid var(--primary);
-      animation: slideIn 0.3s ease-out;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .note:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--box-shadow-lg);
-    }
-
-    .note-content {
-      margin-bottom: 15px;
-      word-wrap: break-word;
-      line-height: 1.7;
-    }
-
-    .note-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.85rem;
-      color: var(--gray);
-    }
-
-    .note-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .note-date {
-      font-style: italic;
-    }
-
-    .note-author {
-      font-weight: 500;
-      color: var(--primary);
-    }
-
-    .form-container {
-      padding: 30px;
-      background: white;
-      position: relative;
-    }
-
-    #noteForm {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .input-group {
-      display: flex;
-      gap: 15px;
-    }
-
-    input, textarea {
-      padding: 16px 20px;
-      border-radius: var(--border-radius-sm);
-      border: 1px solid var(--gray-light);
-      font-size: 1rem;
-      transition: var(--transition);
-      flex: 1;
-      font-family: 'Inter', sans-serif;
-      background: white;
-    }
-
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-
-    input:focus, textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .btn {
-      padding: 16px 28px;
-      border-radius: var(--border-radius-sm);
-      border: none;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    }
-
-    .btn-danger {
-      background: transparent;
-      color: var(--danger);
-      border: 1px solid var(--gray-light);
-    }
-
-    .btn-danger:hover {
-      background: var(--danger);
-      color: white;
-      transform: translateY(-2px);
-    }
-
-    .btn-small {
-      padding: 8px 16px;
-      font-size: 0.85rem;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--gray);
-    }
-
-    .empty-state i {
-      font-size: 4rem;
-      margin-bottom: 20px;
-      color: var(--gray-light);
-    }
-
-    .loading {
-      text-align: center;
-      padding: 30px;
-      color: var(--gray);
-    }
-
-    .char-counter {
-      text-align: right;
-      font-size: 0.85rem;
-      color: var(--gray);
-      margin-top: 8px;
-    }
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.85rem;
-      color: var(--gray);
-      margin-top: 20px;
-      justify-content: center;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-
-    @media (max-width: 768px) {
-      .input-group {
-        flex-direction: column;
-      }
-      
-      .notes-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
-      }
-      
-      .sort-options {
-        align-self: stretch;
-        justify-content: space-between;
-      }
-      
-      .note-meta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-      }
-      
-      .note-actions {
-        align-self: flex-end;
-      }
-      
-      h1 {
-        font-size: 2rem;
-      }
-    }
-
-    .pulse {
-      animation: pulse 1s infinite;
-    }
-
-    .fade-out {
-      animation: fadeOut 0.3s ease-out forwards;
-    }
-
-    @keyframes fadeOut {
-      from {
-        opacity: 1;
-        transform: translateX(0);
-      }
-      to {
-        opacity: 0;
-        transform: translateX(100%);
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header>
-      <h1><i class="fas fa-sticky-note"></i> NoteShare</h1>
-    </header>
-    
-    <div class="app-container">
-      <!-- User Profile Section -->
-      <div class="user-profile">
-        <div class="user-avatar" id="userAvatar">U</div>
-        <div class="user-info">
-          <div class="user-name" id="userName">Guest User</div>
-          <div class="user-status" id="userStatus">Set your name to get started</div>
-        </div>
-        <button class="change-name-btn" id="changeNameBtn">
-          <i class="fas fa-edit"></i> Change
-        </button>
-      </div>
-
-      <!-- Notes Section -->
-      <div class="notes-container">
-        <div class="notes-header">
-          <div class="notes-count">Loading...</div>
-          <div class="sort-options">
-            <button class="sort-btn active" data-sort="newest">Newest</button>
-            <button class="sort-btn" data-sort="oldest">Oldest</button>
-          </div>
-        </div>
-        
-        <div id="notes" class="notes-list">
-          <div class="loading">
-            <i class="fas fa-spinner fa-spin"></i> Loading notes...
-          </div>
-        </div>
-      </div>
-      
-      <!-- Form Section -->
-      <div class="form-container">
-        <form id="noteForm">
-          <textarea id="noteInput" placeholder="What's on your mind? Share it with the world..." required maxlength="500"></textarea>
-          <div class="char-counter">
-            <span id="charCount">0</span>/500 characters
-          </div>
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-paper-plane"></i> Share Note
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <div class="status-indicator">
-      <div class="status-dot"></div>
-      <span id="statusText">Connected to Firebase</span>
-    </div>
-  </div>
-
-  <!-- Name Change Modal -->
-  <div class="name-modal" id="nameModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">Set Your Display Name</h3>
-      </div>
-      <input type="text" class="modal-input" id="nameInput" placeholder="Enter your name" maxlength="30" autofocus>
-      <div class="modal-actions">
-        <button class="modal-btn modal-btn-secondary" id="cancelNameBtn">Cancel</button>
-        <button class="modal-btn modal-btn-primary" id="saveNameBtn">Save Name</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  
-  <script>
+  <script type="module">
     // Firebase Config
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      onSnapshot, 
+      doc, 
+      updateDoc, 
+      increment, 
+      getDoc, 
+      setDoc, 
+      deleteDoc,
+      query,
+      orderBy
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
       authDomain: "poplol-7209f.firebaseapp.com",
@@ -633,273 +32,1604 @@
       appId: "1:105810834:web:example"
     };
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Enable persistence for offline support
-    db.enablePersistence()
-      .catch((err) => {
-        console.log("Persistence failed: ", err);
-      });
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
     // DOM Elements
-    const noteForm = document.getElementById("noteForm");
-    const noteInput = document.getElementById("noteInput");
-    const notesDiv = document.getElementById("notes");
-    const notesCount = document.querySelector(".notes-count");
-    const sortButtons = document.querySelectorAll(".sort-btn");
-    const charCount = document.getElementById("charCount");
-    const statusText = document.getElementById("statusText");
-    const userName = document.getElementById("userName");
-    const userAvatar = document.getElementById("userAvatar");
-    const userStatus = document.getElementById("userStatus");
-    const changeNameBtn = document.getElementById("changeNameBtn");
-    const nameModal = document.getElementById("nameModal");
-    const nameInput = document.getElementById("nameInput");
-    const saveNameBtn = document.getElementById("saveNameBtn");
-    const cancelNameBtn = document.getElementById("cancelNameBtn");
+    const form = document.getElementById('codeForm');
+    const titleInput = document.getElementById('title');
+    const codeInput = document.getElementById('code');
+    const languageSelect = document.getElementById('language');
+    const descriptionInput = document.getElementById('description');
+    const codeList = document.getElementById('codeList');
+    const searchInput = document.getElementById('searchInput');
+    const filterLanguage = document.getElementById('filterLanguage');
+    const sortSelect = document.getElementById('sortSelect');
+    const themeToggle = document.getElementById('themeToggle');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const userNameInput = document.getElementById('userName');
+    const quickActions = document.getElementById('quickActions');
+    const onboarding = document.getElementById('onboarding');
+    const skipOnboarding = document.getElementById('skipOnboarding');
+    const nextOnboarding = document.getElementById('nextOnboarding');
+    const onboardingSteps = document.querySelectorAll('.onboarding-step');
+    const getStartedBtn = document.getElementById('getStartedBtn');
 
-    // App State
-    let currentSort = "newest";
-    let notes = [];
-    let unsubscribe = null;
-    let currentUserName = localStorage.getItem('userName') || 'Guest User';
+    // State
+    let currentUser = null;
+    let allCodes = [];
+    let currentOnboardingStep = 0;
+    let isFirstVisit = true;
 
-    // Initialize user name
-    function initializeUserName() {
-      userName.textContent = currentUserName;
-      userAvatar.textContent = currentUserName.charAt(0).toUpperCase();
-      userStatus.textContent = `Ready to share notes`;
+    // Initialize App
+    function initApp() {
+      loadUserProfile();
+      setupEventListeners();
+      loadLanguages();
+      checkFirstVisit();
+      
+      // Auto-detect code language from input
+      setupLanguageDetection();
     }
 
-    // Character counter
-    noteInput.addEventListener('input', () => {
-      charCount.textContent = noteInput.value.length;
-    });
+    // Check if this is user's first visit
+    function checkFirstVisit() {
+      const hasVisited = localStorage.getItem('hasVisited');
+      if (!hasVisited) {
+        showOnboarding();
+        localStorage.setItem('hasVisited', 'true');
+      } else {
+        loadStats();
+      }
+    }
 
-    // Format date
-    function formatDate(timestamp) {
-      if (!timestamp) return "Just now";
+    // Show onboarding tour
+    function showOnboarding() {
+      onboarding.classList.add('active');
+      showOnboardingStep(0);
+    }
+
+    function showOnboardingStep(step) {
+      onboardingSteps.forEach((s, index) => {
+        s.classList.toggle('active', index === step);
+      });
+      currentOnboardingStep = step;
+    }
+
+    function nextOnboardingStep() {
+      if (currentOnboardingStep < onboardingSteps.length - 1) {
+        showOnboardingStep(currentOnboardingStep + 1);
+      } else {
+        completeOnboarding();
+      }
+    }
+
+    function completeOnboarding() {
+      onboarding.classList.remove('active');
+      loadStats();
+      showNotification("Welcome to CodeShare! 🎉 You're all set to start sharing code.", 'success');
+    }
+
+    // User Management
+    function loadUserProfile() {
+      currentUser = {
+        id: localStorage.getItem('userId') || generateUserId(),
+        name: localStorage.getItem('userName') || 'Anonymous Coder',
+        theme: localStorage.getItem('theme') || 'light'
+      };
       
-      const date = timestamp.toDate();
+      localStorage.setItem('userId', currentUser.id);
+      userNameInput.value = currentUser.name;
+      applyTheme(currentUser.theme);
+    }
+
+    function generateUserId() {
+      return 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    }
+
+    function saveUserProfile() {
+      currentUser.name = userNameInput.value.trim() || 'Anonymous Coder';
+      localStorage.setItem('userName', currentUser.name);
+      showNotification('Profile updated!', 'success');
+    }
+
+    // Theme Management
+    function applyTheme(theme) {
+      document.body.className = theme + '-theme';
+      themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+      localStorage.setItem('theme', theme);
+    }
+
+    // Language Management
+    function loadLanguages() {
+      const languages = [
+        'JavaScript', 'Python', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go',
+        'Swift', 'Kotlin', 'TypeScript', 'HTML', 'CSS', 'SQL', 'Rust', 'Shell',
+        'React', 'Vue', 'Angular', 'Node.js', 'Express', 'Django', 'Flask'
+      ];
+
+      languages.forEach(lang => {
+        const option1 = document.createElement('option');
+        option1.value = lang;
+        option1.textContent = lang;
+        languageSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = lang;
+        option2.textContent = lang;
+        filterLanguage.appendChild(option2);
+      });
+    }
+
+    // Auto-detect programming language from code
+    function setupLanguageDetection() {
+      codeInput.addEventListener('input', function() {
+        const code = this.value;
+        if (code.length > 20) {
+          const detectedLang = detectLanguage(code);
+          if (detectedLang && languageSelect.value === '') {
+            languageSelect.value = detectedLang;
+            showNotification(`We detected ${detectedLang} code! Language auto-selected.`, 'info');
+          }
+        }
+      });
+    }
+
+    function detectLanguage(code) {
+      const patterns = {
+        'JavaScript': /\b(function|const|let|var|=>|console\.log)\b/,
+        'Python': /\b(def|import|from|print|__name__)\b/,
+        'Java': /\b(public|class|static|void|System\.out\.println)\b/,
+        'HTML': /<[^>]+>/,
+        'CSS': /[.#][a-zA-Z][^{]*\{[^}]*\}/,
+        'PHP': /<\?php|\$[a-zA-Z_]/,
+        'SQL': /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE)\b/i
+      };
+
+      for (const [lang, pattern] of Object.entries(patterns)) {
+        if (pattern.test(code)) {
+          return lang;
+        }
+      }
+      return null;
+    }
+
+    // Event Listeners
+    function setupEventListeners() {
+      form.addEventListener('submit', handleSubmit);
+      searchInput.addEventListener('input', debounce(filterCodes, 300));
+      filterLanguage.addEventListener('change', filterCodes);
+      sortSelect.addEventListener('change', sortCodes);
+      themeToggle.addEventListener('click', toggleTheme);
+      userNameInput.addEventListener('change', saveUserProfile);
+      skipOnboarding.addEventListener('click', completeOnboarding);
+      nextOnboarding.addEventListener('click', nextOnboardingStep);
+      getStartedBtn.addEventListener('click', completeOnboarding);
+      
+      // Quick actions
+      document.getElementById('quickShare').addEventListener('click', () => {
+        document.getElementById('codeForm').scrollIntoView({ behavior: 'smooth' });
+        titleInput.focus();
+      });
+      
+      document.getElementById('quickDiscover').addEventListener('click', () => {
+        document.getElementById('codeList').scrollIntoView({ behavior: 'smooth' });
+      });
+
+      // Real-time code updates
+      setupRealtimeListener();
+    }
+
+    function toggleTheme() {
+      const newTheme = document.body.classList.contains('dark-theme') ? 'light' : 'dark';
+      applyTheme(newTheme);
+      showNotification(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode activated`, 'info');
+    }
+
+    // Debounce search for performance
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Code Submission
+    async function handleSubmit(e) {
+      e.preventDefault();
+      
+      const title = titleInput.value.trim();
+      const code = codeInput.value.trim();
+      const language = languageSelect.value;
+      const description = descriptionInput.value.trim();
+
+      if (!title || !code || !language) {
+        showNotification('Please fill in all required fields', 'error');
+        highlightEmptyFields();
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sharing...';
+      submitBtn.disabled = true;
+
+      try {
+        await addDoc(collection(db, "codes"), {
+          title,
+          code,
+          language,
+          description,
+          likes: 0,
+          dislikes: 0,
+          views: 0,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString()
+        });
+
+        showNotification('Code shared successfully! 🎉', 'success');
+        form.reset();
+        updateStats();
+        
+        // Show quick action to view their code
+        setTimeout(() => {
+          showNotification('Scroll down to see your code in the feed!', 'info');
+        }, 1500);
+      } catch (error) {
+        console.error("Error sharing code:", error);
+        showNotification('Error sharing code. Please try again.', 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    function highlightEmptyFields() {
+      const fields = [titleInput, codeInput, languageSelect];
+      fields.forEach(field => {
+        if (!field.value.trim()) {
+          field.classList.add('error');
+          setTimeout(() => field.classList.remove('error'), 2000);
+        }
+      });
+    }
+
+    // Real-time Data
+    function setupRealtimeListener() {
+      showLoading(true);
+      
+      const q = query(collection(db, "codes"), orderBy("createdAt", "desc"));
+      
+      onSnapshot(q, (snapshot) => {
+        allCodes = [];
+        snapshot.forEach((docSnap) => {
+          allCodes.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        
+        renderCodes(allCodes);
+        showLoading(false);
+        updateStats();
+        
+        // Show helpful tip if no codes
+        if (allCodes.length === 0) {
+          setTimeout(() => {
+            showNotification('No codes yet! Be the first to share some code.', 'info');
+          }, 1000);
+        }
+      }, (error) => {
+        console.error("Error loading codes:", error);
+        showNotification('Error loading codes', 'error');
+        showLoading(false);
+      });
+    }
+
+    // Voting System
+    async function handleVote(codeId, voteType) {
+      if (await hasUserVoted(codeId)) {
+        showNotification('You have already voted on this code!', 'warning');
+        return;
+      }
+
+      try {
+        const ref = doc(db, "codes", codeId);
+        await updateDoc(ref, { 
+          [voteType + 's']: increment(1),
+          lastModified: new Date().toISOString()
+        });
+        await recordVote(codeId, voteType);
+        showNotification(`Thanks for your ${voteType}!`, 'success');
+      } catch (error) {
+        console.error('Error voting:', error);
+        showNotification('Error submitting vote', 'error');
+      }
+    }
+
+    async function hasUserVoted(postId) {
+      const voteDoc = await getDoc(doc(db, "votes", `${postId}_${currentUser.id}`));
+      return voteDoc.exists();
+    }
+
+    async function recordVote(postId, voteType) {
+      await setDoc(doc(db, "votes", `${postId}_${currentUser.id}`), {
+        postId: postId,
+        userId: currentUser.id,
+        voteType: voteType,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Delete Functionality
+    async function deletePost(postId) {
+      if (!confirm("Are you sure you want to delete this code? This action cannot be undone.")) {
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "codes", postId));
+        showNotification('Code deleted successfully!', 'success');
+        updateStats();
+      } catch (error) {
+        console.error("Error deleting post:", error);
+        showNotification('Error deleting code', 'error');
+      }
+    }
+
+    // View Counter
+    async function incrementViews(codeId) {
+      try {
+        const ref = doc(db, "codes", codeId);
+        await updateDoc(ref, { 
+          views: increment(1)
+        });
+      } catch (error) {
+        console.error('Error updating views:', error);
+      }
+    }
+
+    // Filtering & Sorting
+    function filterCodes() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const languageFilter = filterLanguage.value;
+      
+      let filtered = allCodes.filter(code => {
+        const matchesSearch = !searchTerm || 
+          code.title.toLowerCase().includes(searchTerm) ||
+          code.description.toLowerCase().includes(searchTerm) ||
+          code.code.toLowerCase().includes(searchTerm) ||
+          code.userName.toLowerCase().includes(searchTerm);
+        
+        const matchesLanguage = !languageFilter || code.language === languageFilter;
+        
+        return matchesSearch && matchesLanguage;
+      });
+      
+      sortCodes(filtered);
+      
+      // Show results count
+      if (searchTerm || languageFilter) {
+        const resultsText = filtered.length === 1 ? 'result' : 'results';
+        showNotification(`Found ${filtered.length} ${resultsText}`, 'info', 2000);
+      }
+    }
+
+    function sortCodes(filteredCodes = allCodes) {
+      const sortBy = sortSelect.value;
+      let sorted = [...filteredCodes];
+      
+      switch(sortBy) {
+        case 'newest':
+          sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          break;
+        case 'oldest':
+          sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          break;
+        case 'popular':
+          sorted.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+          break;
+        case 'most_liked':
+          sorted.sort((a, b) => b.likes - a.likes);
+          break;
+        case 'most_viewed':
+          sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+          break;
+      }
+      
+      renderCodes(sorted);
+    }
+
+    // Rendering
+    function renderCodes(codes) {
+      if (codes.length === 0) {
+        codeList.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-search"></i>
+            <h3>No codes found</h3>
+            <p>Try adjusting your search or filters, or <a href="#" onclick="document.getElementById('codeForm').scrollIntoView({behavior:'smooth'})">share the first code</a></p>
+          </div>
+        `;
+        return;
+      }
+
+      codeList.innerHTML = codes.map(code => {
+        const isOwner = code.userId === currentUser.id;
+        const netScore = code.likes - code.dislikes;
+        const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
+        const views = code.views || 0;
+        
+        return `
+          <div class="code-card" data-id="${code.id}">
+            <div class="card-header">
+              <div class="code-title-section">
+                <h3 class="code-title">${escapeHtml(code.title)}</h3>
+                <span class="language-tag">${escapeHtml(code.language)}</span>
+              </div>
+              <div class="card-actions">
+                ${isOwner ? `
+                  <button class="btn-icon delete-btn" onclick="deletePost('${code.id}')" title="Delete code">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                ` : ''}
+                <button class="btn-icon copy-btn" onclick="copyCode('${code.id}')" title="Copy code">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+            </div>
+            
+            ${code.description ? `
+              <div class="code-description">
+                ${escapeHtml(code.description)}
+              </div>
+            ` : ''}
+            
+            <div class="code-meta">
+              <span class="author">
+                <i class="fas fa-user"></i>
+                ${escapeHtml(code.userName)}
+              </span>
+              <span class="date">
+                <i class="fas fa-calendar"></i>
+                ${formatDate(code.createdAt)}
+              </span>
+              <span class="views">
+                <i class="fas fa-eye"></i>
+                ${views} view${views !== 1 ? 's' : ''}
+              </span>
+            </div>
+            
+            <pre class="code-block"><code>${escapeHtml(code.code)}</code></pre>
+            
+            <div class="card-footer">
+              <div class="vote-section">
+                <button class="vote-btn like-btn" onclick="handleVote('${code.id}', 'like')">
+                  <i class="fas fa-thumbs-up"></i>
+                  <span>${code.likes || 0}</span>
+                </button>
+                <div class="score ${scoreColor}">
+                  ${netScore}
+                </div>
+                <button class="vote-btn dislike-btn" onclick="handleVote('${code.id}', 'dislike')">
+                  <i class="fas fa-thumbs-down"></i>
+                  <span>${code.dislikes || 0}</span>
+                </button>
+              </div>
+              <div class="engagement-hint">
+                ${netScore >= 5 ? '🔥 Popular!' : netScore <= -3 ? '💡 Could use improvement' : '💙 Be the first to vote!'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Attach view increment on code block click
+      codeList.querySelectorAll('.code-block').forEach(block => {
+        block.addEventListener('click', async () => {
+          const codeId = block.closest('.code-card').dataset.id;
+          await incrementViews(codeId);
+        });
+      });
+    }
+
+    // Utility Functions
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
       const now = new Date();
-      const diffInSeconds = Math.floor((now - date) / 1000);
+      const diff = now - date;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       
-      if (diffInSeconds < 60) return "Just now";
-      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-      
+      if (days === 0) return 'Today';
+      if (days === 1) return 'Yesterday';
+      if (days < 7) return `${days} days ago`;
+      if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
       return date.toLocaleDateString();
     }
 
-    // Add Note
-    noteForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const note = noteInput.value.trim();
-      
-      if (note) {
+    async function copyCode(codeId) {
+      const code = allCodes.find(c => c.id === codeId);
+      if (code) {
         try {
-          // Add pulse animation to button
-          const submitBtn = noteForm.querySelector('button');
-          submitBtn.classList.add('pulse');
-          
-          // Optimistic UI update - add note immediately to UI
-          const tempId = 'temp_' + Date.now();
-          const tempNote = {
-            id: tempId,
-            text: note,
-            author: currentUserName,
-            timestamp: null
-          };
-          
-          notes.unshift(tempNote);
-          renderNotes(notes);
-          
-          // Clear form immediately for better UX
-          noteInput.value = "";
-          charCount.textContent = "0";
-          
-          // Add to Firebase
-          await db.collection("notes").add({
-            text: note,
-            author: currentUserName,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          
-          // Remove pulse animation
-          submitBtn.classList.remove('pulse');
-          
-        } catch (error) {
-          console.error("Error adding note: ", error);
-          // Remove optimistic update if failed
-          notes = notes.filter(note => note.id !== tempId);
-          renderNotes(notes);
-        }
-      }
-    });
-
-    // Delete Note
-    async function deleteNote(id) {
-      if (confirm("Are you sure you want to delete this note?")) {
-        try {
-          // Optimistic deletion - remove immediately from UI
-          const noteIndex = notes.findIndex(note => note.id === id);
-          if (noteIndex !== -1) {
-            const deletedNote = notes.splice(noteIndex, 1)[0];
-            renderNotes(notes);
-            
-            // Try to delete from Firebase
-            await db.collection("notes").doc(id).delete();
-          }
-        } catch (error) {
-          console.error("Error deleting note: ", error);
-          // Re-add note if deletion failed
-          if (deletedNote) {
-            notes.splice(noteIndex, 0, deletedNote);
-            renderNotes(notes);
-          }
+          await navigator.clipboard.writeText(code.code);
+          showNotification('Code copied to clipboard! 📋', 'success');
+        } catch (err) {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = code.code;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          showNotification('Code copied to clipboard! 📋', 'success');
         }
       }
     }
 
-    // Sort notes
-    function sortNotes(notes, sortBy) {
-      return notes.sort((a, b) => {
-        const aTime = a.timestamp ? a.timestamp.toDate().getTime() : 0;
-        const bTime = b.timestamp ? b.timestamp.toDate().getTime() : 0;
-        
-        if (sortBy === "newest") {
-          return bTime - aTime;
-        } else {
-          return aTime - bTime;
+    function showNotification(message, type = 'info', duration = 5000) {
+      // Remove any existing notifications of the same message
+      const existingNotifications = document.querySelectorAll('.notification');
+      existingNotifications.forEach(notification => {
+        if (notification.textContent.includes(message)) {
+          notification.remove();
         }
       });
+      
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <i class="fas fa-${getNotificationIcon(type)}"></i>
+        <span>${message}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      
+      document.getElementById('notifications').appendChild(notification);
+      
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, duration);
     }
 
-    // Render notes
-    function renderNotes(notesToRender) {
-      if (notesToRender.length === 0) {
-        notesDiv.innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-sticky-note"></i>
-            <h3>No notes yet</h3>
-            <p>Be the first to share a note!</p>
-          </div>
-        `;
-        notesCount.textContent = "0 notes";
-        return;
-      }
-      
-      const sortedNotes = sortNotes([...notesToRender], currentSort);
-      
-      // Use DocumentFragment for batch DOM updates
-      const fragment = document.createDocumentFragment();
-      
-      sortedNotes.forEach(note => {
-        const noteElement = document.createElement('div');
-        noteElement.className = 'note';
-        noteElement.setAttribute('data-id', note.id);
-        
-        noteElement.innerHTML = `
-          <div class="note-content">${note.text}</div>
-          <div class="note-meta">
-            <div>
-              <span class="note-author">By ${note.author}</span>
-              <span class="note-date"> • ${formatDate(note.timestamp)}</span>
-            </div>
-            <div class="note-actions">
-              <button class="btn btn-danger btn-small" onclick="deleteNote('${note.id}')">
-                <i class="fas fa-trash"></i> Delete
-              </button>
-            </div>
-          </div>
-        `;
-        
-        fragment.appendChild(noteElement);
-      });
-      
-      // Single DOM update
-      notesDiv.innerHTML = '';
-      notesDiv.appendChild(fragment);
-      
-      notesCount.textContent = `${notesToRender.length} ${notesToRender.length === 1 ? 'note' : 'notes'}`;
+    function getNotificationIcon(type) {
+      const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+      };
+      return icons[type] || 'info-circle';
     }
 
-    // Set up sorting
-    sortButtons.forEach(button => {
-      button.addEventListener("click", () => {
-        sortButtons.forEach(btn => btn.classList.remove("active"));
-        button.classList.add("active");
-        currentSort = button.dataset.sort;
-        
-        // Re-render notes with new sort
-        renderNotes(notes);
-      });
-    });
+    function showLoading(show) {
+      loadingSpinner.style.display = show ? 'flex' : 'none';
+    }
 
-    // Name change functionality
-    changeNameBtn.addEventListener('click', () => {
-      nameInput.value = currentUserName;
-      nameModal.classList.add('active');
-      nameInput.focus();
-    });
+    function updateStats() {
+      const stats = {
+        totalCodes: allCodes.length,
+        totalLikes: allCodes.reduce((sum, code) => sum + (code.likes || 0), 0),
+        totalViews: allCodes.reduce((sum, code) => sum + (code.views || 0), 0)
+      };
+      
+      document.getElementById('totalCodes').textContent = stats.totalCodes;
+      document.getElementById('totalLikes').textContent = stats.totalLikes;
+      document.getElementById('totalViews').textContent = stats.totalViews;
+    }
 
-    saveNameBtn.addEventListener('click', () => {
-      const newName = nameInput.value.trim();
-      if (newName) {
-        currentUserName = newName;
-        localStorage.setItem('userName', newName);
-        initializeUserName();
-        nameModal.classList.remove('active');
-      }
-    });
+    // Make functions global for onclick handlers
+    window.handleVote = handleVote;
+    window.deletePost = deletePost;
+    window.copyCode = copyCode;
+    window.filterCodes = filterCodes;
 
-    cancelNameBtn.addEventListener('click', () => {
-      nameModal.classList.remove('active');
-    });
-
-    // Close modal when clicking outside
-    nameModal.addEventListener('click', (e) => {
-      if (e.target === nameModal) {
-        nameModal.classList.remove('active');
-      }
-    });
-
-    // Show Notes in Real-time
-    unsubscribe = db.collection("notes")
-      .orderBy("timestamp", "desc")
-      .limit(50)
-      .onSnapshot(snapshot => {
-        notes = [];
-        snapshot.forEach(doc => {
-          notes.push({ id: doc.id, ...doc.data() });
-        });
-        renderNotes(notes);
-        
-        // Update status
-        statusText.textContent = `Live updates active • ${notes.length} notes`;
-      }, error => {
-        console.error("Error fetching notes: ", error);
-        notesDiv.innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-exclamation-triangle"></i>
-            <h3>Connection issue</h3>
-            <p>Notes will appear when connection is restored</p>
-          </div>
-        `;
-        statusText.textContent = "Offline - reconnecting...";
-      });
-
-    // Initialize the app
-    initializeUserName();
-
-    // Clean up on page unload
-    window.addEventListener('beforeunload', () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    });
+    // Initialize app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initApp);
   </script>
+
+  <style>
+    :root {
+      --primary: #4361ee;
+      --primary-light: #4895ef;
+      --primary-dark: #3a0ca3;
+      --success: #4cc9f0;
+      --warning: #f72585;
+      --danger: #e63946;
+      --dark: #1d3557;
+      --light: #f1faee;
+      --gray: #adb5bd;
+      --border: #a8dadc;
+    }
+
+    .light-theme {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8f9fa;
+      --bg-card: #ffffff;
+      --text-primary: #2b2d42;
+      --text-secondary: #6c757d;
+      --border-color: #dee2e6;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .dark-theme {
+      --bg-primary: #121212;
+      --bg-secondary: #1e1e1e;
+      --bg-card: #2d2d2d;
+      --text-primary: #e9ecef;
+      --text-secondary: #adb5bd;
+      --border-color: #404040;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .logo-icon {
+      background: var(--primary);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-icon:hover {
+      background: var(--border-color);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 4rem 0 2rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: white;
+      border-radius: 0 0 20px 20px;
+      margin-bottom: 2rem;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      font-weight: 800;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      opacity: 0.9;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: white;
+      color: var(--primary);
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: white;
+      border: 2px solid white;
+    }
+
+    .btn-secondary:hover {
+      background: white;
+      color: var(--primary);
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .quick-action-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .quick-action-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+      box-shadow: var(--shadow);
+    }
+
+    .quick-action-icon {
+      width: 60px;
+      height: 60px;
+      background: var(--primary);
+      color: white;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 1.5rem;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary);
+      display: block;
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Filters */
+    .filters {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    @media (max-width: 768px) {
+      .filter-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    input, select, textarea {
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    input.error, select.error, textarea.error {
+      border-color: var(--danger);
+      animation: shake 0.5s;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    /* Code Form */
+    .code-form {
+      background: var(--bg-card);
+      padding: 2rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Code Cards */
+    .code-list {
+      display: grid;
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .code-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .code-card:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .code-title-section {
+      flex: 1;
+    }
+
+    .code-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .language-tag {
+      background: var(--primary);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .code-description {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .code-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .code-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .code-block {
+      background: var(--dark);
+      color: var(--light);
+      padding: 1.5rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 1rem 0;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .code-block:hover {
+      opacity: 0.9;
+    }
+
+    .code-block::after {
+      content: 'Click to view';
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .code-block:hover::after {
+      opacity: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .vote-section {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .vote-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .like-btn:hover {
+      border-color: var(--success);
+      color: var(--success);
+      transform: scale(1.05);
+    }
+
+    .dislike-btn:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+      transform: scale(1.05);
+    }
+
+    .score {
+      font-weight: bold;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      min-width: 30px;
+      text-align: center;
+    }
+
+    .score.positive { 
+      color: var(--success);
+      background: rgba(76, 201, 240, 0.1);
+    }
+    .score.negative { 
+      color: var(--danger);
+      background: rgba(230, 57, 70, 0.1);
+    }
+    .score.neutral { 
+      color: var(--gray);
+      background: rgba(173, 181, 189, 0.1);
+    }
+
+    .engagement-hint {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    /* Onboarding */
+    .onboarding {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .onboarding.active {
+      display: flex;
+    }
+
+    .onboarding-content {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      text-align: center;
+    }
+
+    .onboarding-step {
+      display: none;
+    }
+
+    .onboarding-step.active {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .onboarding-icon {
+      font-size: 4rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    .onboarding h2 {
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+
+    .onboarding p {
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+    .onboarding-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .onboarding-progress {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 2rem;
+    }
+
+    .progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .progress-dot.active {
+      background: var(--primary);
+      transform: scale(1.2);
+    }
+
+    /* Notifications */
+    #notifications {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .notification {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--primary);
+      padding: 1rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 300px;
+      box-shadow: var(--shadow);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .notification.success { border-left-color: var(--success); }
+    .notification.error { border-left-color: var(--danger); }
+    .notification.warning { border-left-color: var(--warning); }
+
+    .notification-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      margin-left: auto;
+    }
+
+    /* Loading */
+    .loading {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 3rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-left: 4px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .empty-state a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 15px;
+      }
+      
+      .header-content {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .controls {
+        justify-content: space-between;
+      }
+      
+      .code-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .hero h1 {
+        font-size: 2rem;
+      }
+      
+      .card-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .engagement-hint {
+        text-align: center;
+      }
+    }
+
+    /* Floating Action Button */
+    .fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 60px;
+      height: 60px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+
+    .fab:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    /* User name input in header */
+    .user-name-input {
+      max-width: 150px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body class="light-theme">
+  <!-- Notifications Container -->
+  <div id="notifications"></div>
+
+  <!-- Onboarding Tour -->
+  <div id="onboarding" class="onboarding">
+    <div class="onboarding-content">
+      <div class="onboarding-step active">
+        <div class="onboarding-icon">
+          <i class="fas fa-code"></i>
+        </div>
+        <h2>Welcome to CodeShare! 👋</h2>
+        <p>Share your code snippets with the community, discover amazing code from others, and learn together.</p>
+        <div class="onboarding-buttons">
+          <button id="skipOnboarding" class="btn btn-secondary">Skip Tour</button>
+          <button id="nextOnboarding" class="btn btn-primary">Get Started</button>
+        </div>
+      </div>
+      
+      <div class="onboarding-step">
+        <div class="onboarding-icon">
+          <i class="fas fa-upload"></i>
+        </div>
+        <h2>Share Your Code</h2>
+        <p>Easily share code by filling out the simple form. Add a title, paste your code, and select the language.</p>
+        <div class="onboarding-buttons">
+          <button id="skipOnboarding2" class="btn btn-secondary">Skip Tour</button>
+          <button id="nextOnboarding2" class="btn btn-primary">Next</button>
+        </div>
+      </div>
+      
+      <div class="onboarding-step">
+        <div class="onboarding-icon">
+          <i class="fas fa-heart"></i>
+        </div>
+        <h2>Engage with Community</h2>
+        <p>Like helpful code, provide feedback, and copy useful snippets to your projects with one click.</p>
+        <div class="onboarding-buttons">
+          <button id="skipOnboarding3" class="btn btn-secondary">Skip Tour</button>
+          <button id="nextOnboarding3" class="btn btn-primary">Next</button>
+        </div>
+      </div>
+      
+      <div class="onboarding-step">
+        <div class="onboarding-icon">
+          <i class="fas fa-search"></i>
+        </div>
+        <h2>Discover & Learn</h2>
+        <p>Use search and filters to find exactly what you need. Sort by popularity, date, or language.</p>
+        <div class="onboarding-buttons">
+          <button id="getStartedBtn" class="btn btn-primary">Start Sharing Code!</button>
+        </div>
+      </div>
+      
+      <div class="onboarding-progress">
+        <div class="progress-dot active"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+        <div class="progress-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">
+            <i class="fas fa-code"></i>
+          </div>
+          <span>CodeShare</span>
+        </div>
+        <div class="controls">
+          <input type="text" id="userName" placeholder="Your name" class="user-name-input">
+          <button id="themeToggle" class="btn-icon" title="Toggle theme">
+            <i class="fas fa-moon"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1>Share Code. Learn Together. 🚀</h1>
+      <p>The easiest way to share code snippets with developers worldwide. Perfect for collaboration, learning, and inspiration.</p>
+      <div class="hero-buttons">
+        <button class="btn" onclick="document.getElementById('codeForm').scrollIntoView({behavior:'smooth'})">
+          <i class="fas fa-plus"></i> Share Your Code
+        </button>
+        <button class="btn btn-secondary" onclick="document.getElementById('codeList').scrollIntoView({behavior:'smooth'})">
+          <i class="fas fa-explore"></i> Explore Code
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <!-- Quick Actions -->
+    <div class="quick-actions" id="quickActions">
+      <div class="quick-action-card" id="quickShare">
+        <div class="quick-action-icon">
+          <i class="fas fa-upload"></i>
+        </div>
+        <h3>Share Code</h3>
+        <p>Quickly share your code snippets with the community</p>
+      </div>
+      <div class="quick-action-card" id="quickDiscover">
+        <div class="quick-action-icon">
+          <i class="fas fa-compass"></i>
+        </div>
+        <h3>Discover</h3>
+        <p>Find useful code examples from other developers</p>
+      </div>
+      <div class="quick-action-card" onclick="filterCodes()">
+        <div class="quick-action-icon">
+          <i class="fas fa-filter"></i>
+        </div>
+        <h3>Filter & Search</h3>
+        <p>Find exactly what you need with powerful filters</p>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <span class="stat-number" id="totalCodes">0</span>
+        <span class="stat-label">Total Codes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="totalLikes">0</span>
+        <span class="stat-label">Total Likes</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="totalViews">0</span>
+        <span class="stat-label">Total Views</span>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <div class="filter-row">
+        <div class="form-group">
+          <label for="searchInput"><i class="fas fa-search"></i> Search Codes</label>
+          <input type="text" id="searchInput" placeholder="Search by title, description, code, or author...">
+        </div>
+        <div class="form-group">
+          <label for="filterLanguage"><i class="fas fa-code"></i> Language</label>
+          <select id="filterLanguage">
+            <option value="">All Languages</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="sortSelect"><i class="fas fa-sort"></i> Sort By</label>
+          <select id="sortSelect">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="popular">Most Popular</option>
+            <option value="most_liked">Most Liked</option>
+            <option value="most_viewed">Most Viewed</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="filterCodes()">
+          <i class="fas fa-filter"></i> Apply
+        </button>
+      </div>
+    </div>
+
+    <!-- Code Submission Form -->
+    <div class="code-form">
+      <h2><i class="fas fa-plus-circle"></i> Share Your Code</h2>
+      <form id="codeForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="title">Code Title *</label>
+            <input type="text" id="title" placeholder="What does this code do?" required>
+          </div>
+          <div class="form-group">
+            <label for="language">Programming Language *</label>
+            <select id="language" required>
+              <option value="">Select Language</option>
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label for="description">Description (Optional)</label>
+            <textarea id="description" placeholder="Brief description of what this code does..." rows="2"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label for="code">Your Code *</label>
+            <textarea id="code" placeholder="Paste your code here..." rows="8" required></textarea>
+            <small style="color: var(--text-secondary); margin-top: 0.5rem;">
+              <i class="fas fa-lightbulb"></i> Tip: We'll try to auto-detect the language as you type!
+            </small>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-share"></i> Share Code
+        </button>
+      </form>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Code List -->
+    <div id="codeList" class="code-list">
+      <div class="empty-state">
+        <i class="fas fa-code"></i>
+        <h3>No codes shared yet</h3>
+        <p>Be the first to share your amazing code!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Action Button -->
+  <div class="fab" onclick="document.getElementById('codeForm').scrollIntoView({behavior:'smooth'})">
+    <i class="fas fa-plus"></i>
+  </div>
 </body>
 </html>
