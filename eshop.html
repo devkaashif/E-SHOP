@@ -57,7 +57,7 @@
     let currentUser = null;
     let allCodes = [];
     let comments = {}; // Store comments by code ID
-    let commentListeners = {}; // Store comment listeners for cleanup
+    let commentListeners = {}; // Store comment listeners
 
     // Initialize App
     function initApp() {
@@ -274,8 +274,8 @@
         showLoading(false);
         updateStats();
         
-        // Setup real-time comment listeners for all codes
-        setupAllCommentListeners();
+        // Load comments for all codes
+        loadAllComments();
         
         // Show helpful tip if no codes
         if (allCodes.length === 0) {
@@ -288,48 +288,6 @@
         showNotification('Error loading codes', 'error');
         showLoading(false);
       });
-    }
-
-    // Setup real-time comment listeners for all codes
-    function setupAllCommentListeners() {
-      // Clean up existing listeners
-      Object.values(commentListeners).forEach(unsubscribe => unsubscribe());
-      commentListeners = {};
-      
-      // Setup listeners for each code
-      allCodes.forEach(code => {
-        setupCommentListener(code.id);
-      });
-    }
-
-    // Setup real-time comment listener for a specific code
-    function setupCommentListener(codeId) {
-      const q = query(
-        collection(db, "comments"), 
-        where("codeId", "==", codeId), 
-        orderBy("createdAt", "asc")
-      );
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        comments[codeId] = [];
-        snapshot.forEach((doc) => {
-          comments[codeId].push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-        
-        // Update UI if comments are currently visible for this code
-        updateCommentsUI(codeId);
-        
-        // Update comment counts
-        updateCommentCounts();
-        updateStats();
-      }, (error) => {
-        console.error(`Error loading comments for code ${codeId}:`, error);
-      });
-      
-      commentListeners[codeId] = unsubscribe;
     }
 
     // Voting System
@@ -447,6 +405,70 @@
     }
 
     // Comment System
+    function loadAllComments() {
+      // Set up real-time listener for all comments
+      const commentsQuery = query(collection(db, "comments"), orderBy("createdAt", "asc"));
+      
+      onSnapshot(commentsQuery, (snapshot) => {
+        comments = {};
+        
+        snapshot.forEach((doc) => {
+          const comment = doc.data();
+          const codeId = comment.codeId;
+          
+          if (!comments[codeId]) {
+            comments[codeId] = [];
+          }
+          
+          comments[codeId].push({
+            id: doc.id,
+            ...comment
+          });
+        });
+        
+        // Update UI with comment counts
+        updateCommentCounts();
+        
+        // Update any open comment sections
+        updateOpenCommentSections();
+      }, (error) => {
+        console.error("Error loading comments:", error);
+      });
+    }
+
+    function setupCommentsListener(codeId) {
+      // If we already have a listener for this code, don't set up another one
+      if (commentListeners[codeId]) return;
+      
+      const q = query(
+        collection(db, "comments"), 
+        where("codeId", "==", codeId), 
+        orderBy("createdAt", "asc")
+      );
+      
+      commentListeners[codeId] = onSnapshot(q, (snapshot) => {
+        comments[codeId] = [];
+        snapshot.forEach((doc) => {
+          comments[codeId].push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        // Update the comment section if it's open
+        const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+        if (card) {
+          const commentsSection = card.querySelector('.comments-section');
+          if (commentsSection && commentsSection.style.display === 'block') {
+            renderComments(codeId);
+          }
+        }
+        
+        // Update comment count
+        updateCommentCounts();
+      });
+    }
+
     async function addComment(codeId, commentText) {
       if (!commentText.trim()) {
         showNotification('Please enter a comment', 'warning');
@@ -504,6 +526,15 @@
       });
     }
 
+    function updateOpenCommentSections() {
+      document.querySelectorAll('.comments-section').forEach(section => {
+        if (section.style.display === 'block') {
+          const codeId = section.closest('.code-card').dataset.id;
+          renderComments(codeId);
+        }
+      });
+    }
+
     function toggleComments(codeId) {
       const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
       const commentsSection = card.querySelector('.comments-section');
@@ -522,24 +553,17 @@
       `;
       commentsSection.style.display = 'block';
       
-      // Render comments immediately (they should already be loaded via real-time listener)
-      renderComments(codeId);
-    }
-
-    function updateCommentsUI(codeId) {
-      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
-      if (!card) return;
+      // Set up real-time listener for this code's comments
+      setupCommentsListener(codeId);
       
-      const commentsSection = card.querySelector('.comments-section');
-      if (commentsSection && commentsSection.style.display === 'block') {
+      // Render comments immediately if we have them
+      if (comments[codeId]) {
         renderComments(codeId);
       }
     }
 
     function renderComments(codeId) {
       const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
-      if (!card) return;
-      
       const commentsSection = card.querySelector('.comments-section');
       const codeComments = comments[codeId] || [];
       
@@ -581,7 +605,7 @@
       const success = await addComment(codeId, commentText);
       if (success) {
         commentInput.value = '';
-        // Comments will update automatically via real-time listener
+        // The real-time listener will automatically update the comments
       }
     }
 
