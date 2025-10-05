@@ -57,6 +57,7 @@
     let currentUser = null;
     let allCodes = [];
     let comments = {}; // Store comments by code ID
+    let votingInProgress = new Set(); // Track votes in progress
 
     // Initialize App
     function initApp() {
@@ -291,22 +292,58 @@
 
     // Voting System
     async function handleVote(codeId, voteType) {
-      if (await hasUserVoted(codeId)) {
-        showNotification('You have already voted on this code!', 'warning');
+      // Check if vote is already in progress for this post
+      if (votingInProgress.has(codeId)) {
+        showNotification('Please wait, your vote is being processed...', 'warning');
         return;
       }
 
-      try {
-        const ref = doc(db, "codes", codeId);
-        await updateDoc(ref, { 
-          [voteType + 's']: increment(1),
-          lastModified: new Date().toISOString()
-        });
-        await recordVote(codeId, voteType);
-        showNotification(`Thanks for your ${voteType}!`, 'success');
-      } catch (error) {
-        console.error('Error voting:', error);
-        showNotification('Error submitting vote', 'error');
+      // Add to voting in progress set
+      votingInProgress.add(codeId);
+      
+      // Show loading state for the specific vote button
+      const voteBtn = document.querySelector(`.code-card[data-id="${codeId}"] .${voteType}-btn`);
+      if (voteBtn) {
+        const originalHTML = voteBtn.innerHTML;
+        voteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        voteBtn.disabled = true;
+        
+        // Also disable the other vote button
+        const otherVoteType = voteType === 'like' ? 'dislike' : 'like';
+        const otherVoteBtn = document.querySelector(`.code-card[data-id="${codeId}"] .${otherVoteType}-btn`);
+        if (otherVoteBtn) {
+          otherVoteBtn.disabled = true;
+        }
+        
+        try {
+          if (await hasUserVoted(codeId)) {
+            showNotification('You have already voted on this code!', 'warning');
+            return;
+          }
+
+          const ref = doc(db, "codes", codeId);
+          await updateDoc(ref, { 
+            [voteType + 's']: increment(1),
+            lastModified: new Date().toISOString()
+          });
+          await recordVote(codeId, voteType);
+          showNotification(`Thanks for your ${voteType}!`, 'success');
+        } catch (error) {
+          console.error('Error voting:', error);
+          showNotification('Error submitting vote', 'error');
+        } finally {
+          // Remove from voting in progress set
+          votingInProgress.delete(codeId);
+          
+          // Restore original button state
+          voteBtn.innerHTML = originalHTML;
+          voteBtn.disabled = false;
+          
+          // Re-enable the other vote button
+          if (otherVoteBtn) {
+            otherVoteBtn.disabled = false;
+          }
+        }
       }
     }
 
@@ -1302,6 +1339,11 @@
       gap: 0.5rem;
     }
 
+    .vote-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .like-btn:hover {
       border-color: var(--success);
       color: var(--success);
@@ -1769,4 +1811,3 @@
   </div>
 </body>
 </html>
-
