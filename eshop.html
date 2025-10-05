@@ -24,6 +24,14 @@
       where,
       getDocs
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { 
+      getAuth, 
+      createUserWithEmailAndPassword, 
+      signInWithEmailAndPassword, 
+      signOut, 
+      onAuthStateChanged,
+      updateProfile
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
@@ -37,6 +45,7 @@
     // Init Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
     // DOM Elements
     const form = document.getElementById('codeForm');
@@ -52,6 +61,16 @@
     const loadingSpinner = document.getElementById('loadingSpinner');
     const userNameInput = document.getElementById('userName');
     const quickActions = document.getElementById('quickActions');
+    const authModal = document.getElementById('authModal');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const showSignupLink = document.getElementById('showSignup');
+    const showLoginLink = document.getElementById('showLogin');
+    const userProfile = document.getElementById('userProfile');
+    const userAvatar = document.getElementById('userAvatar');
+    const userNameDisplay = document.getElementById('userNameDisplay');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const authButtons = document.getElementById('authButtons');
 
     // State
     let currentUser = null;
@@ -61,26 +80,189 @@
 
     // Initialize App
     function initApp() {
-      loadUserProfile();
       setupEventListeners();
       loadLanguages();
       loadStats();
       
       // Auto-detect code language from input
       setupLanguageDetection();
+      
+      // Set up auth state listener
+      setupAuthListener();
+    }
+
+    // Auth Management
+    function setupAuthListener() {
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // User is signed in
+          currentUser = {
+            id: user.uid,
+            name: user.displayName || 'Anonymous Coder',
+            email: user.email,
+            theme: localStorage.getItem('theme') || 'light'
+          };
+          
+          localStorage.setItem('userId', currentUser.id);
+          userNameInput.value = currentUser.name;
+          applyTheme(currentUser.theme);
+          
+          // Update UI for logged in user
+          userProfile.style.display = 'flex';
+          authButtons.style.display = 'none';
+          userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+          userNameDisplay.textContent = currentUser.name;
+          
+          // Load data
+          setupRealtimeListener();
+          setupRealtimeCommentsListener();
+          
+          showNotification(`Welcome back, ${currentUser.name}!`, 'success');
+        } else {
+          // User is signed out
+          currentUser = null;
+          userProfile.style.display = 'none';
+          authButtons.style.display = 'flex';
+          
+          // Clear data
+          allCodes = [];
+          comments = {};
+          renderCodes([]);
+          
+          showNotification('Please sign in to share and interact with code', 'info');
+        }
+      });
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('signupConfirmPassword').value;
+      
+      if (!name || !email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        showNotification('Passwords do not match', 'error');
+        return;
+      }
+      
+      if (password.length < 6) {
+        showNotification('Password must be at least 6 characters', 'error');
+        return;
+      }
+      
+      const submitBtn = signupForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+      submitBtn.disabled = true;
+      
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, {
+          displayName: name
+        });
+        
+        showNotification('Account created successfully!', 'success');
+        closeAuthModal();
+        signupForm.reset();
+      } catch (error) {
+        console.error("Error signing up:", error);
+        let message = 'Error creating account';
+        
+        if (error.code === 'auth/email-already-in-use') {
+          message = 'Email is already in use';
+        } else if (error.code === 'auth/invalid-email') {
+          message = 'Invalid email address';
+        } else if (error.code === 'auth/weak-password') {
+          message = 'Password is too weak';
+        }
+        
+        showNotification(message, 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      
+      if (!email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+      }
+      
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+      submitBtn.disabled = true;
+      
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        
+        showNotification('Signed in successfully!', 'success');
+        closeAuthModal();
+        loginForm.reset();
+      } catch (error) {
+        console.error("Error signing in:", error);
+        let message = 'Error signing in';
+        
+        if (error.code === 'auth/invalid-credential') {
+          message = 'Invalid email or password';
+        } else if (error.code === 'auth/user-not-found') {
+          message = 'No account found with this email';
+        } else if (error.code === 'auth/wrong-password') {
+          message = 'Incorrect password';
+        }
+        
+        showNotification(message, 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await signOut(auth);
+        showNotification('Signed out successfully', 'info');
+      } catch (error) {
+        console.error("Error signing out:", error);
+        showNotification('Error signing out', 'error');
+      }
+    }
+
+    function openAuthModal() {
+      authModal.style.display = 'flex';
+      showLoginForm();
+    }
+
+    function closeAuthModal() {
+      authModal.style.display = 'none';
+    }
+
+    function showLoginForm() {
+      loginForm.style.display = 'block';
+      signupForm.style.display = 'none';
+    }
+
+    function showSignupForm() {
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'block';
     }
 
     // User Management
     function loadUserProfile() {
-      currentUser = {
-        id: localStorage.getItem('userId') || generateUserId(),
-        name: localStorage.getItem('userName') || 'Anonymous Coder',
-        theme: localStorage.getItem('theme') || 'light'
-      };
-      
-      localStorage.setItem('userId', currentUser.id);
-      userNameInput.value = currentUser.name;
-      applyTheme(currentUser.theme);
+      // This is now handled by the auth listener
     }
 
     function generateUserId() {
@@ -88,9 +270,29 @@
     }
 
     function saveUserProfile() {
-      currentUser.name = userNameInput.value.trim() || 'Anonymous Coder';
-      localStorage.setItem('userName', currentUser.name);
-      showNotification('Profile updated!', 'success');
+      if (!currentUser) {
+        showNotification('Please sign in to update your profile', 'warning');
+        return;
+      }
+      
+      const newName = userNameInput.value.trim();
+      if (!newName) {
+        showNotification('Please enter a name', 'warning');
+        return;
+      }
+      
+      // Update in Firebase Auth
+      updateProfile(auth.currentUser, {
+        displayName: newName
+      }).then(() => {
+        currentUser.name = newName;
+        userNameDisplay.textContent = newName;
+        userAvatar.textContent = newName.charAt(0).toUpperCase();
+        showNotification('Profile updated!', 'success');
+      }).catch((error) => {
+        console.error("Error updating profile:", error);
+        showNotification('Error updating profile', 'error');
+      });
     }
 
     // Theme Management
@@ -163,8 +365,26 @@
       themeToggle.addEventListener('click', toggleTheme);
       userNameInput.addEventListener('change', saveUserProfile);
       
+      // Auth event listeners
+      loginForm.addEventListener('submit', handleLogin);
+      signupForm.addEventListener('submit', handleSignup);
+      showSignupLink.addEventListener('click', showSignupForm);
+      showLoginLink.addEventListener('click', showLoginForm);
+      logoutBtn.addEventListener('click', handleLogout);
+      document.getElementById('openAuthModal').addEventListener('click', openAuthModal);
+      authModal.addEventListener('click', (e) => {
+        if (e.target === authModal) {
+          closeAuthModal();
+        }
+      });
+      
       // Quick actions
       document.getElementById('quickShare').addEventListener('click', () => {
+        if (!currentUser) {
+          showNotification('Please sign in to share code', 'warning');
+          openAuthModal();
+          return;
+        }
         document.getElementById('codeForm').scrollIntoView({ behavior: 'smooth' });
         titleInput.focus();
       });
@@ -172,12 +392,6 @@
       document.getElementById('quickDiscover').addEventListener('click', () => {
         document.getElementById('codeList').scrollIntoView({ behavior: 'smooth' });
       });
-
-      // Real-time code updates
-      setupRealtimeListener();
-      
-      // Real-time comment updates
-      setupRealtimeCommentsListener();
     }
 
     function toggleTheme() {
@@ -202,6 +416,12 @@
     // Code Submission
     async function handleSubmit(e) {
       e.preventDefault();
+      
+      if (!currentUser) {
+        showNotification('Please sign in to share code', 'warning');
+        openAuthModal();
+        return;
+      }
       
       const title = titleInput.value.trim();
       const code = codeInput.value.trim();
@@ -337,6 +557,12 @@
 
     // Voting System
     async function handleVote(codeId, voteType) {
+      if (!currentUser) {
+        showNotification('Please sign in to vote', 'warning');
+        openAuthModal();
+        return;
+      }
+
       // Check if vote is already in progress for this post
       if (votingInProgress.has(codeId)) {
         showNotification('Please wait, your vote is being processed...', 'warning');
@@ -538,9 +764,15 @@
     }
 
     async function addComment(codeId, commentText) {
+      if (!currentUser) {
+        showNotification('Please sign in to comment', 'warning');
+        openAuthModal();
+        return false;
+      }
+
       if (!commentText.trim()) {
         showNotification('Please enter a comment', 'warning');
-        return;
+        return false;
       }
 
       try {
@@ -601,6 +833,12 @@
     }
 
     function toggleComments(codeId) {
+      if (!currentUser) {
+        showNotification('Please sign in to view comments', 'warning');
+        openAuthModal();
+        return;
+      }
+
       const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
       const commentsSection = card.querySelector('.comments-section');
       
@@ -706,7 +944,7 @@
       }
 
       codeList.innerHTML = codes.map(code => {
-        const isOwner = code.userId === currentUser.id;
+        const isOwner = currentUser && code.userId === currentUser.id;
         const netScore = code.likes - code.dislikes;
         const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
         const views = code.views || 0;
@@ -756,18 +994,18 @@
             
             <div class="card-footer">
               <div class="vote-section">
-                <button class="vote-btn like-btn" onclick="handleVote('${code.id}', 'like')">
+                <button class="vote-btn like-btn" onclick="handleVote('${code.id}', 'like')" ${!currentUser ? 'disabled' : ''}>
                   <i class="fas fa-thumbs-up"></i>
                   <span>${code.likes || 0}</span>
                 </button>
                 <div class="score ${scoreColor}">
                   ${netScore}
                 </div>
-                <button class="vote-btn dislike-btn" onclick="handleVote('${code.id}', 'dislike')">
+                <button class="vote-btn dislike-btn" onclick="handleVote('${code.id}', 'dislike')" ${!currentUser ? 'disabled' : ''}>
                   <i class="fas fa-thumbs-down"></i>
                   <span>${code.dislikes || 0}</span>
                 </button>
-                <button class="vote-btn comment-btn" onclick="toggleComments('${code.id}')">
+                <button class="vote-btn comment-btn" onclick="toggleComments('${code.id}')" ${!currentUser ? 'disabled' : ''}>
                   <i class="fas fa-comment"></i>
                   <span class="comment-count">${commentCount}</span>
                 </button>
@@ -902,6 +1140,8 @@
     window.toggleComments = toggleComments;
     window.submitComment = submitComment;
     window.deleteComment = deleteComment;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
 
     // Initialize app when DOM is loaded
     document.addEventListener('DOMContentLoaded', initApp);
@@ -1024,6 +1264,195 @@
       background: var(--border-color);
       color: var(--text-primary);
       transform: translateY(-2px);
+    }
+
+    /* Auth Modal */
+    .auth-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-content {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .auth-header h2 {
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .auth-header p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .auth-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .auth-form-group label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .auth-form-group input {
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .auth-form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    .auth-switch {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .auth-switch a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .auth-switch a:hover {
+      text-decoration: underline;
+    }
+
+    .close-auth {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+
+    /* User Profile */
+    .user-profile {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user-name {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .user-email {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logout-btn:hover {
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
+    }
+
+    /* Auth Buttons */
+    .auth-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-auth {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-auth:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+
+    .btn-auth-secondary {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .btn-auth-secondary:hover {
+      background: var(--primary);
+      color: white;
     }
 
     /* Hero Section */
@@ -1667,6 +2096,16 @@
       .vote-section {
         justify-content: center;
       }
+      
+      .user-profile {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .auth-buttons {
+        flex-direction: column;
+        width: 100%;
+      }
     }
 
     /* Floating Action Button */
@@ -1705,6 +2144,73 @@
   <!-- Notifications Container -->
   <div id="notifications"></div>
 
+  <!-- Auth Modal -->
+  <div id="authModal" class="auth-modal">
+    <div class="auth-content">
+      <button class="close-auth" onclick="closeAuthModal()">
+        <i class="fas fa-times"></i>
+      </button>
+      
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form">
+        <div class="auth-header">
+          <h2>Welcome Back</h2>
+          <p>Sign in to your account</p>
+        </div>
+        
+        <div class="auth-form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="Enter your email" required>
+        </div>
+        
+        <div class="auth-form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter your password" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Sign In</button>
+        
+        <div class="auth-switch">
+          Don't have an account? <a id="showSignup">Sign up</a>
+        </div>
+      </form>
+      
+      <!-- Signup Form -->
+      <form id="signupForm" class="auth-form" style="display: none;">
+        <div class="auth-header">
+          <h2>Create Account</h2>
+          <p>Join our coding community</p>
+        </div>
+        
+        <div class="auth-form-group">
+          <label for="signupName">Full Name</label>
+          <input type="text" id="signupName" placeholder="Enter your full name" required>
+        </div>
+        
+        <div class="auth-form-group">
+          <label for="signupEmail">Email</label>
+          <input type="email" id="signupEmail" placeholder="Enter your email" required>
+        </div>
+        
+        <div class="auth-form-group">
+          <label for="signupPassword">Password</label>
+          <input type="password" id="signupPassword" placeholder="Create a password" required>
+        </div>
+        
+        <div class="auth-form-group">
+          <label for="signupConfirmPassword">Confirm Password</label>
+          <input type="password" id="signupConfirmPassword" placeholder="Confirm your password" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Create Account</button>
+        
+        <div class="auth-switch">
+          Already have an account? <a id="showLogin">Sign in</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Header -->
   <header class="header">
     <div class="container">
@@ -1717,6 +2223,24 @@
         </div>
         <div class="controls">
           <input type="text" id="userName" placeholder="Your name" class="user-name-input">
+          
+          <!-- User Profile (shown when logged in) -->
+          <div id="userProfile" class="user-profile" style="display: none;">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <div class="user-info">
+              <span class="user-name" id="userNameDisplay">User</span>
+            </div>
+            <button id="logoutBtn" class="logout-btn">
+              <i class="fas fa-sign-out-alt"></i>
+            </button>
+          </div>
+          
+          <!-- Auth Buttons (shown when logged out) -->
+          <div id="authButtons" class="auth-buttons">
+            <button class="btn-auth-secondary" id="openAuthModal">Sign In</button>
+            <button class="btn-auth" id="openAuthModalSignup">Sign Up</button>
+          </div>
+          
           <button id="themeToggle" class="btn-icon" title="Toggle theme">
             <i class="fas fa-moon"></i>
           </button>
@@ -1868,5 +2392,15 @@
   <div class="fab" onclick="document.getElementById('codeForm').scrollIntoView({behavior:'smooth'})">
     <i class="fas fa-plus"></i>
   </div>
+
+  <script>
+    // Add event listener for signup button in header
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('openAuthModalSignup').addEventListener('click', function() {
+        openAuthModal();
+        showSignupForm();
+      });
+    });
+  </script>
 </body>
 </html>
