@@ -30,7 +30,8 @@
       signInWithEmailAndPassword, 
       signOut, 
       onAuthStateChanged,
-      updateProfile
+      updateProfile,
+      sendPasswordResetEmail
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -64,6 +65,7 @@
     const authModal = document.getElementById('authModal');
     const loginForm = document.getElementById('loginForm');
     const signupForm = document.getElementById('signupForm');
+    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
     const showSignupLink = document.getElementById('showSignup');
     const showLoginLink = document.getElementById('showLogin');
     const userProfile = document.getElementById('userProfile');
@@ -231,6 +233,45 @@
       }
     }
 
+    async function handleForgotPassword(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('resetEmail').value.trim();
+      
+      if (!email) {
+        showNotification('Please enter your email address', 'error');
+        return;
+      }
+      
+      const submitBtn = forgotPasswordForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+      submitBtn.disabled = true;
+      
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showNotification('Password reset email sent! Check your inbox.', 'success');
+        forgotPasswordForm.reset();
+        showLoginForm();
+      } catch (error) {
+        console.error("Error sending password reset email:", error);
+        let message = 'Error sending reset email';
+        
+        if (error.code === 'auth/user-not-found') {
+          message = 'No account found with this email';
+        } else if (error.code === 'auth/invalid-email') {
+          message = 'Invalid email address';
+        } else if (error.code === 'auth/too-many-requests') {
+          message = 'Too many attempts. Please try again later';
+        }
+        
+        showNotification(message, 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
     async function handleLogout() {
       try {
         await signOut(auth);
@@ -253,11 +294,19 @@
     function showLoginForm() {
       loginForm.style.display = 'block';
       signupForm.style.display = 'none';
+      forgotPasswordForm.style.display = 'none';
     }
 
     function showSignupForm() {
       loginForm.style.display = 'none';
       signupForm.style.display = 'block';
+      forgotPasswordForm.style.display = 'none';
+    }
+
+    function showForgotPasswordForm() {
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'none';
+      forgotPasswordForm.style.display = 'block';
     }
 
     // User Management
@@ -368,8 +417,11 @@
       // Auth event listeners
       loginForm.addEventListener('submit', handleLogin);
       signupForm.addEventListener('submit', handleSignup);
+      forgotPasswordForm.addEventListener('submit', handleForgotPassword);
       showSignupLink.addEventListener('click', showSignupForm);
       showLoginLink.addEventListener('click', showLoginForm);
+      document.getElementById('showLoginFromForgot').addEventListener('click', showLoginForm);
+      document.getElementById('forgotPasswordLink').addEventListener('click', showForgotPasswordForm);
       logoutBtn.addEventListener('click', handleLogout);
       document.getElementById('openAuthModal').addEventListener('click', openAuthModal);
       authModal.addEventListener('click', (e) => {
@@ -1368,6 +1420,22 @@
       font-size: 1.2rem;
     }
 
+    /* Forgot Password Link */
+    .forgot-password {
+      text-align: right;
+      margin-top: 0.25rem;
+    }
+
+    .forgot-password a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+
+    .forgot-password a:hover {
+      text-decoration: underline;
+    }
+
     /* User Profile */
     .user-profile {
       display: none;
@@ -2166,6 +2234,9 @@
         <div class="auth-form-group">
           <label for="loginPassword">Password</label>
           <input type="password" id="loginPassword" placeholder="Enter your password" required>
+          <div class="forgot-password">
+            <a href="#" id="forgotPasswordLink">Forgot your password?</a>
+          </div>
         </div>
         
         <button type="submit" class="btn btn-primary">Sign In</button>
@@ -2206,6 +2277,25 @@
         
         <div class="auth-switch">
           Already have an account? <a id="showLogin">Sign in</a>
+        </div>
+      </form>
+      
+      <!-- Forgot Password Form -->
+      <form id="forgotPasswordForm" class="auth-form" style="display: none;">
+        <div class="auth-header">
+          <h2>Reset Your Password</h2>
+          <p>Enter your email to receive a password reset link</p>
+        </div>
+        
+        <div class="auth-form-group">
+          <label for="resetEmail">Email</label>
+          <input type="email" id="resetEmail" placeholder="Enter your email" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Send Reset Link</button>
+        
+        <div class="auth-switch">
+          Remember your password? <a id="showLoginFromForgot">Sign in</a>
         </div>
       </form>
     </div>
