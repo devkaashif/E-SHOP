@@ -175,6 +175,9 @@
 
       // Real-time code updates
       setupRealtimeListener();
+      
+      // Real-time comment updates
+      setupRealtimeCommentsListener();
     }
 
     function toggleTheme() {
@@ -274,9 +277,6 @@
         showLoading(false);
         updateStats();
         
-        // Load comments for all codes
-        loadAllComments();
-        
         // Show helpful tip if no codes
         if (allCodes.length === 0) {
           setTimeout(() => {
@@ -287,6 +287,51 @@
         console.error("Error loading codes:", error);
         showNotification('Error loading codes', 'error');
         showLoading(false);
+      });
+    }
+
+    // Real-time Comments Listener
+    function setupRealtimeCommentsListener() {
+      onSnapshot(collection(db, "comments"), (snapshot) => {
+        // Reset comments object
+        comments = {};
+        
+        snapshot.forEach((doc) => {
+          const comment = doc.data();
+          const codeId = comment.codeId;
+          
+          if (!comments[codeId]) {
+            comments[codeId] = [];
+          }
+          
+          comments[codeId].push({
+            id: doc.id,
+            ...comment
+          });
+        });
+        
+        // Sort comments by date for each code
+        Object.keys(comments).forEach(codeId => {
+          comments[codeId].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
+        
+        // Update UI with comment counts
+        updateCommentCounts();
+        
+        // Update any open comment sections
+        updateOpenCommentSections();
+      }, (error) => {
+        console.error("Error loading comments:", error);
+      });
+    }
+
+    // Update open comment sections with new data
+    function updateOpenCommentSections() {
+      document.querySelectorAll('.comments-section').forEach(section => {
+        if (section.style.display === 'block') {
+          const codeId = section.closest('.code-card').dataset.id;
+          renderComments(codeId);
+        }
       });
     }
 
@@ -623,13 +668,27 @@
       const commentInput = card.querySelector('.comment-input');
       const commentText = commentInput.value;
       
-      const success = await addComment(codeId, commentText);
-      if (success) {
-        commentInput.value = '';
-        // Reload comments for this code
-        await loadCommentsForCode(codeId);
-        renderComments(codeId);
-        updateCommentCounts();
+      if (!commentText.trim()) {
+        showNotification('Please enter a comment', 'warning');
+        return;
+      }
+      
+      // Show loading state
+      const submitBtn = card.querySelector('.add-comment .btn');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+      submitBtn.disabled = true;
+      
+      try {
+        const success = await addComment(codeId, commentText);
+        if (success) {
+          commentInput.value = '';
+          // The real-time listener will automatically update the comments section
+        }
+      } finally {
+        // Restore button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
       }
     }
 
