@@ -6,22 +6,293 @@
   <title>CodeShare - Share Code Effortlessly</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script type="module">
-    // ... (previous Firebase and app initialization code remains the same)
-    
-    // Voting System with Loading Animation
+    // Firebase Config
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      onSnapshot, 
+      doc, 
+      updateDoc, 
+      increment, 
+      getDoc, 
+      setDoc, 
+      deleteDoc,
+      query,
+      orderBy,
+      where,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
+      authDomain: "poplol-7209f.firebaseapp.com",
+      projectId: "poplol-7209f",
+      storageBucket: "poplol-7209f.appspot.com",
+      messagingSenderId: "105810834",
+      appId: "1:105810834:web:example"
+    };
+
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // DOM Elements
+    const form = document.getElementById('codeForm');
+    const titleInput = document.getElementById('title');
+    const codeInput = document.getElementById('code');
+    const languageSelect = document.getElementById('language');
+    const descriptionInput = document.getElementById('description');
+    const codeList = document.getElementById('codeList');
+    const searchInput = document.getElementById('searchInput');
+    const filterLanguage = document.getElementById('filterLanguage');
+    const sortSelect = document.getElementById('sortSelect');
+    const themeToggle = document.getElementById('themeToggle');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const userNameInput = document.getElementById('userName');
+    const quickActions = document.getElementById('quickActions');
+
+    // State
+    let currentUser = null;
+    let allCodes = [];
+    let comments = {}; // Store comments by code ID
+
+    // Initialize App
+    function initApp() {
+      loadUserProfile();
+      setupEventListeners();
+      loadLanguages();
+      loadStats();
+      
+      // Auto-detect code language from input
+      setupLanguageDetection();
+    }
+
+    // User Management
+    function loadUserProfile() {
+      currentUser = {
+        id: localStorage.getItem('userId') || generateUserId(),
+        name: localStorage.getItem('userName') || 'Anonymous Coder',
+        theme: localStorage.getItem('theme') || 'light'
+      };
+      
+      localStorage.setItem('userId', currentUser.id);
+      userNameInput.value = currentUser.name;
+      applyTheme(currentUser.theme);
+    }
+
+    function generateUserId() {
+      return 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    }
+
+    function saveUserProfile() {
+      currentUser.name = userNameInput.value.trim() || 'Anonymous Coder';
+      localStorage.setItem('userName', currentUser.name);
+      showNotification('Profile updated!', 'success');
+    }
+
+    // Theme Management
+    function applyTheme(theme) {
+      document.body.className = theme + '-theme';
+      themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+      localStorage.setItem('theme', theme);
+    }
+
+    // Language Management
+    function loadLanguages() {
+      const languages = [
+        'JavaScript', 'Python', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go',
+        'Swift', 'Kotlin', 'TypeScript', 'HTML', 'CSS', 'SQL', 'Rust', 'Shell',
+        'React', 'Vue', 'Angular', 'Node.js', 'Express', 'Django', 'Flask'
+      ];
+
+      languages.forEach(lang => {
+        const option1 = document.createElement('option');
+        option1.value = lang;
+        option1.textContent = lang;
+        languageSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = lang;
+        option2.textContent = lang;
+        filterLanguage.appendChild(option2);
+      });
+    }
+
+    // Auto-detect programming language from code
+    function setupLanguageDetection() {
+      codeInput.addEventListener('input', function() {
+        const code = this.value;
+        if (code.length > 20) {
+          const detectedLang = detectLanguage(code);
+          if (detectedLang && languageSelect.value === '') {
+            languageSelect.value = detectedLang;
+            showNotification(`We detected ${detectedLang} code! Language auto-selected.`, 'info');
+          }
+        }
+      });
+    }
+
+    function detectLanguage(code) {
+      const patterns = {
+        'JavaScript': /\b(function|const|let|var|=>|console\.log)\b/,
+        'Python': /\b(def|import|from|print|__name__)\b/,
+        'Java': /\b(public|class|static|void|System\.out\.println)\b/,
+        'HTML': /<[^>]+>/,
+        'CSS': /[.#][a-zA-Z][^{]*\{[^}]*\}/,
+        'PHP': /<\?php|\$[a-zA-Z_]/,
+        'SQL': /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE)\b/i
+      };
+
+      for (const [lang, pattern] of Object.entries(patterns)) {
+        if (pattern.test(code)) {
+          return lang;
+        }
+      }
+      return null;
+    }
+
+    // Event Listeners
+    function setupEventListeners() {
+      form.addEventListener('submit', handleSubmit);
+      searchInput.addEventListener('input', debounce(filterCodes, 300));
+      filterLanguage.addEventListener('change', filterCodes);
+      sortSelect.addEventListener('change', sortCodes);
+      themeToggle.addEventListener('click', toggleTheme);
+      userNameInput.addEventListener('change', saveUserProfile);
+      
+      // Quick actions
+      document.getElementById('quickShare').addEventListener('click', () => {
+        document.getElementById('codeForm').scrollIntoView({ behavior: 'smooth' });
+        titleInput.focus();
+      });
+      
+      document.getElementById('quickDiscover').addEventListener('click', () => {
+        document.getElementById('codeList').scrollIntoView({ behavior: 'smooth' });
+      });
+
+      // Real-time code updates
+      setupRealtimeListener();
+    }
+
+    function toggleTheme() {
+      const newTheme = document.body.classList.contains('dark-theme') ? 'light' : 'dark';
+      applyTheme(newTheme);
+      showNotification(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode activated`, 'info');
+    }
+
+    // Debounce search for performance
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Code Submission
+    async function handleSubmit(e) {
+      e.preventDefault();
+      
+      const title = titleInput.value.trim();
+      const code = codeInput.value.trim();
+      const language = languageSelect.value;
+      const description = descriptionInput.value.trim();
+
+      if (!title || !code || !language) {
+        showNotification('Please fill in all required fields', 'error');
+        highlightEmptyFields();
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sharing...';
+      submitBtn.disabled = true;
+
+      try {
+        await addDoc(collection(db, "codes"), {
+          title,
+          code,
+          language,
+          description,
+          likes: 0,
+          dislikes: 0,
+          views: 0,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString()
+        });
+
+        showNotification('Code shared successfully! 🎉', 'success');
+        form.reset();
+        updateStats();
+        
+        // Show quick action to view their code
+        setTimeout(() => {
+          showNotification('Scroll down to see your code in the feed!', 'info');
+        }, 1500);
+      } catch (error) {
+        console.error("Error sharing code:", error);
+        showNotification('Error sharing code. Please try again.', 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    function highlightEmptyFields() {
+      const fields = [titleInput, codeInput, languageSelect];
+      fields.forEach(field => {
+        if (!field.value.trim()) {
+          field.classList.add('error');
+          setTimeout(() => field.classList.remove('error'), 2000);
+        }
+      });
+    }
+
+    // Real-time Data
+    function setupRealtimeListener() {
+      showLoading(true);
+      
+      const q = query(collection(db, "codes"), orderBy("createdAt", "desc"));
+      
+      onSnapshot(q, (snapshot) => {
+        allCodes = [];
+        snapshot.forEach((docSnap) => {
+          allCodes.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        
+        renderCodes(allCodes);
+        showLoading(false);
+        updateStats();
+        
+        // Load comments for all codes
+        loadAllComments();
+        
+        // Show helpful tip if no codes
+        if (allCodes.length === 0) {
+          setTimeout(() => {
+            showNotification('No codes yet! Be the first to share some code.', 'info');
+          }, 1000);
+        }
+      }, (error) => {
+        console.error("Error loading codes:", error);
+        showNotification('Error loading codes', 'error');
+        showLoading(false);
+      });
+    }
+
+    // Voting System
     async function handleVote(codeId, voteType) {
-      const button = document.querySelector(`.code-card[data-id="${codeId}"] .${voteType}-btn`);
-      const originalContent = button.innerHTML;
-      
-      // Show loading animation
-      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-      button.disabled = true;
-      
       if (await hasUserVoted(codeId)) {
         showNotification('You have already voted on this code!', 'warning');
-        // Restore original button content
-        button.innerHTML = originalContent;
-        button.disabled = false;
         return;
       }
 
@@ -36,1137 +307,1301 @@
       } catch (error) {
         console.error('Error voting:', error);
         showNotification('Error submitting vote', 'error');
-      } finally {
-        // Restore original button content
-        button.innerHTML = originalContent;
-        button.disabled = false;
       }
     }
 
-    // ... (rest of the code remains the same)
+    async function hasUserVoted(postId) {
+      const voteDoc = await getDoc(doc(db, "votes", `${postId}_${currentUser.id}`));
+      return voteDoc.exists();
+    }
+
+    async function recordVote(postId, voteType) {
+      await setDoc(doc(db, "votes", `${postId}_${currentUser.id}`), {
+        postId: postId,
+        userId: currentUser.id,
+        voteType: voteType,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Delete Functionality
+    async function deletePost(postId) {
+      if (!confirm("Are you sure you want to delete this code? This action cannot be undone.")) {
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "codes", postId));
+        showNotification('Code deleted successfully!', 'success');
+        updateStats();
+      } catch (error) {
+        console.error("Error deleting post:", error);
+        showNotification('Error deleting code', 'error');
+      }
+    }
+
+    // View Counter
+    async function incrementViews(codeId) {
+      try {
+        const ref = doc(db, "codes", codeId);
+        await updateDoc(ref, { 
+          views: increment(1)
+        });
+      } catch (error) {
+        console.error('Error updating views:', error);
+      }
+    }
+
+    // Filtering & Sorting
+    function filterCodes() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const languageFilter = filterLanguage.value;
+      
+      let filtered = allCodes.filter(code => {
+        const matchesSearch = !searchTerm || 
+          code.title.toLowerCase().includes(searchTerm) ||
+          code.description.toLowerCase().includes(searchTerm) ||
+          code.code.toLowerCase().includes(searchTerm) ||
+          code.userName.toLowerCase().includes(searchTerm);
+        
+        const matchesLanguage = !languageFilter || code.language === languageFilter;
+        
+        return matchesSearch && matchesLanguage;
+      });
+      
+      sortCodes(filtered);
+      
+      // Show results count
+      if (searchTerm || languageFilter) {
+        const resultsText = filtered.length === 1 ? 'result' : 'results';
+        showNotification(`Found ${filtered.length} ${resultsText}`, 'info', 2000);
+      }
+    }
+
+    function sortCodes(filteredCodes = allCodes) {
+      const sortBy = sortSelect.value;
+      let sorted = [...filteredCodes];
+      
+      switch(sortBy) {
+        case 'newest':
+          sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          break;
+        case 'oldest':
+          sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          break;
+        case 'popular':
+          sorted.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+          break;
+        case 'most_liked':
+          sorted.sort((a, b) => b.likes - a.likes);
+          break;
+        case 'most_viewed':
+          sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+          break;
+      }
+      
+      renderCodes(sorted);
+    }
+
+    // Comment System
+    async function loadAllComments() {
+      comments = {};
+      
+      try {
+        const commentsSnapshot = await getDocs(collection(db, "comments"));
+        commentsSnapshot.forEach((doc) => {
+          const comment = doc.data();
+          const codeId = comment.codeId;
+          
+          if (!comments[codeId]) {
+            comments[codeId] = [];
+          }
+          
+          comments[codeId].push({
+            id: doc.id,
+            ...comment
+          });
+        });
+        
+        // Sort comments by date for each code
+        Object.keys(comments).forEach(codeId => {
+          comments[codeId].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
+        
+        // Update UI with comment counts
+        updateCommentCounts();
+      } catch (error) {
+        console.error("Error loading comments:", error);
+      }
+    }
+
+    async function loadCommentsForCode(codeId) {
+      try {
+        const q = query(collection(db, "comments"), where("codeId", "==", codeId), orderBy("createdAt", "asc"));
+        const querySnapshot = await getDocs(q);
+        
+        comments[codeId] = [];
+        querySnapshot.forEach((doc) => {
+          comments[codeId].push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        return comments[codeId];
+      } catch (error) {
+        console.error("Error loading comments for code:", error);
+        return [];
+      }
+    }
+
+    async function addComment(codeId, commentText) {
+      if (!commentText.trim()) {
+        showNotification('Please enter a comment', 'warning');
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "comments"), {
+          codeId: codeId,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          text: commentText.trim(),
+          createdAt: new Date().toISOString()
+        });
+        
+        showNotification('Comment added!', 'success');
+        return true;
+      } catch (error) {
+        console.error("Error adding comment:", error);
+        showNotification('Error adding comment', 'error');
+        return false;
+      }
+    }
+
+    async function deleteComment(commentId, codeId) {
+      if (!confirm("Are you sure you want to delete this comment?")) {
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "comments", commentId));
+        
+        // Remove from local state
+        if (comments[codeId]) {
+          comments[codeId] = comments[codeId].filter(comment => comment.id !== commentId);
+        }
+        
+        showNotification('Comment deleted', 'success');
+        return true;
+      } catch (error) {
+        console.error("Error deleting comment:", error);
+        showNotification('Error deleting comment', 'error');
+        return false;
+      }
+    }
+
+    function updateCommentCounts() {
+      document.querySelectorAll('.code-card').forEach(card => {
+        const codeId = card.dataset.id;
+        const commentCount = comments[codeId] ? comments[codeId].length : 0;
+        const commentBtn = card.querySelector('.comment-btn');
+        
+        if (commentBtn) {
+          const countSpan = commentBtn.querySelector('.comment-count');
+          if (countSpan) {
+            countSpan.textContent = commentCount;
+          } else {
+            commentBtn.innerHTML += `<span class="comment-count">${commentCount}</span>`;
+          }
+        }
+      });
+    }
+
+    function toggleComments(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentsSection = card.querySelector('.comments-section');
+      
+      if (commentsSection.style.display === 'block') {
+        commentsSection.style.display = 'none';
+        return;
+      }
+      
+      // Show loading
+      commentsSection.innerHTML = `
+        <div class="comments-loading">
+          <div class="spinner"></div>
+          <span>Loading comments...</span>
+        </div>
+      `;
+      commentsSection.style.display = 'block';
+      
+      // Load comments if not already loaded
+      if (!comments[codeId]) {
+        loadCommentsForCode(codeId).then(() => {
+          renderComments(codeId);
+        });
+      } else {
+        renderComments(codeId);
+      }
+    }
+
+    function renderComments(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentsSection = card.querySelector('.comments-section');
+      const codeComments = comments[codeId] || [];
+      
+      commentsSection.innerHTML = `
+        <div class="comments-header">
+          <h4>Comments (${codeComments.length})</h4>
+        </div>
+        <div class="comments-list">
+          ${codeComments.length > 0 ? 
+            codeComments.map(comment => `
+              <div class="comment" data-id="${comment.id}">
+                <div class="comment-header">
+                  <span class="comment-author">${escapeHtml(comment.userName)}</span>
+                  <span class="comment-date">${formatDate(comment.createdAt)}</span>
+                  ${comment.userId === currentUser.id ? `
+                    <button class="btn-icon delete-comment-btn" onclick="deleteComment('${comment.id}', '${codeId}')" title="Delete comment">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  ` : ''}
+                </div>
+                <div class="comment-text">${escapeHtml(comment.text)}</div>
+              </div>
+            `).join('') : 
+            '<div class="no-comments">No comments yet. Be the first to comment!</div>'
+          }
+        </div>
+        <div class="add-comment">
+          <textarea class="comment-input" placeholder="Add a comment..." rows="2"></textarea>
+          <button class="btn btn-primary btn-sm" onclick="submitComment('${codeId}')">Post Comment</button>
+        </div>
+      `;
+    }
+
+    async function submitComment(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentInput = card.querySelector('.comment-input');
+      const commentText = commentInput.value;
+      
+      const success = await addComment(codeId, commentText);
+      if (success) {
+        commentInput.value = '';
+        // Reload comments for this code
+        await loadCommentsForCode(codeId);
+        renderComments(codeId);
+        updateCommentCounts();
+      }
+    }
+
+    // Rendering
+    function renderCodes(codes) {
+      if (codes.length === 0) {
+        codeList.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-search"></i>
+            <h3>No codes found</h3>
+            <p>Try adjusting your search or filters, or <a href="#" onclick="document.getElementById('codeForm').scrollIntoView({behavior:'smooth'})">share the first code</a></p>
+          </div>
+        `;
+        return;
+      }
+
+      codeList.innerHTML = codes.map(code => {
+        const isOwner = code.userId === currentUser.id;
+        const netScore = code.likes - code.dislikes;
+        const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
+        const views = code.views || 0;
+        const commentCount = comments[code.id] ? comments[code.id].length : 0;
+        
+        return `
+          <div class="code-card" data-id="${code.id}">
+            <div class="card-header">
+              <div class="code-title-section">
+                <h3 class="code-title">${escapeHtml(code.title)}</h3>
+                <span class="language-tag">${escapeHtml(code.language)}</span>
+              </div>
+              <div class="card-actions">
+                ${isOwner ? `
+                  <button class="btn-icon delete-btn" onclick="deletePost('${code.id}')" title="Delete code">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                ` : ''}
+                <button class="btn-icon copy-btn" onclick="copyCode('${code.id}')" title="Copy code">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+            </div>
+            
+            ${code.description ? `
+              <div class="code-description">
+                ${escapeHtml(code.description)}
+              </div>
+            ` : ''}
+            
+            <div class="code-meta">
+              <span class="author">
+                <i class="fas fa-user"></i>
+                ${escapeHtml(code.userName)}
+              </span>
+              <span class="date">
+                <i class="fas fa-calendar"></i>
+                ${formatDate(code.createdAt)}
+              </span>
+              <span class="views">
+                <i class="fas fa-eye"></i>
+                ${views} view${views !== 1 ? 's' : ''}
+              </span>
+            </div>
+            
+            <pre class="code-block"><code>${escapeHtml(code.code)}</code></pre>
+            
+            <div class="card-footer">
+              <div class="vote-section">
+                <button class="vote-btn like-btn" onclick="handleVote('${code.id}', 'like')">
+                  <i class="fas fa-thumbs-up"></i>
+                  <span>${code.likes || 0}</span>
+                </button>
+                <div class="score ${scoreColor}">
+                  ${netScore}
+                </div>
+                <button class="vote-btn dislike-btn" onclick="handleVote('${code.id}', 'dislike')">
+                  <i class="fas fa-thumbs-down"></i>
+                  <span>${code.dislikes || 0}</span>
+                </button>
+                <button class="vote-btn comment-btn" onclick="toggleComments('${code.id}')">
+                  <i class="fas fa-comment"></i>
+                  <span class="comment-count">${commentCount}</span>
+                </button>
+              </div>
+              <div class="engagement-hint">
+                ${netScore >= 5 ? '🔥 Popular!' : netScore <= -3 ? '💡 Could use improvement' : '💙 Be the first to vote!'}
+              </div>
+            </div>
+            
+            <div class="comments-section" style="display: none;"></div>
+          </div>
+        `;
+      }).join('');
+
+      // Attach view increment on code block click
+      codeList.querySelectorAll('.code-block').forEach(block => {
+        block.addEventListener('click', async () => {
+          const codeId = block.closest('.code-card').dataset.id;
+          await incrementViews(codeId);
+        });
+      });
+    }
+
+    // Utility Functions
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diff = now - date;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      
+      if (days === 0) return 'Today';
+      if (days === 1) return 'Yesterday';
+      if (days < 7) return `${days} days ago`;
+      if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+      return date.toLocaleDateString();
+    }
+
+    async function copyCode(codeId) {
+      const code = allCodes.find(c => c.id === codeId);
+      if (code) {
+        try {
+          await navigator.clipboard.writeText(code.code);
+          showNotification('Code copied to clipboard! 📋', 'success');
+        } catch (err) {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = code.code;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          showNotification('Code copied to clipboard! 📋', 'success');
+        }
+      }
+    }
+
+    function showNotification(message, type = 'info', duration = 5000) {
+      // Remove any existing notifications of the same message
+      const existingNotifications = document.querySelectorAll('.notification');
+      existingNotifications.forEach(notification => {
+        if (notification.textContent.includes(message)) {
+          notification.remove();
+        }
+      });
+      
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <i class="fas fa-${getNotificationIcon(type)}"></i>
+        <span>${message}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      
+      document.getElementById('notifications').appendChild(notification);
+      
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, duration);
+    }
+
+    function getNotificationIcon(type) {
+      const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+      };
+      return icons[type] || 'info-circle';
+    }
+
+    function showLoading(show) {
+      loadingSpinner.style.display = show ? 'flex' : 'none';
+    }
+
+    function updateStats() {
+      const stats = {
+        totalCodes: allCodes.length,
+        totalLikes: allCodes.reduce((sum, code) => sum + (code.likes || 0), 0),
+        totalViews: allCodes.reduce((sum, code) => sum + (code.views || 0), 0),
+        totalComments: Object.values(comments).reduce((sum, codeComments) => sum + codeComments.length, 0)
+      };
+      
+      document.getElementById('totalCodes').textContent = stats.totalCodes;
+      document.getElementById('totalLikes').textContent = stats.totalLikes;
+      document.getElementById('totalViews').textContent = stats.totalViews;
+      document.getElementById('totalComments').textContent = stats.totalComments;
+    }
+
+    function loadStats() {
+      // Initialize with current data
+      updateStats();
+    }
+
+    // Make functions global for onclick handlers
+    window.handleVote = handleVote;
+    window.deletePost = deletePost;
+    window.copyCode = copyCode;
+    window.filterCodes = filterCodes;
+    window.toggleComments = toggleComments;
+    window.submitComment = submitComment;
+    window.deleteComment = deleteComment;
+
+    // Initialize app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initApp);
   </script>
 
   <style>
-  :root {
-  --primary: #4361ee;
-  --primary-light: #4895ef;
-  --primary-dark: #3a0ca3;
-  --success: #4cc9f0;
-  --warning: #f72585;
-  --danger: #e63946;
-  --dark: #1d3557;
-  --light: #f1faee;
-  --gray: #adb5bd;
-  --border: #a8dadc;
-}
-
-.light-theme {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-card: #ffffff;
-  --text-primary: #2b2d42;
-  --text-secondary: #6c757d;
-  --border-color: #dee2e6;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-.dark-theme {
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --bg-card: #2d2d2d;
-  --text-primary: #e9ecef;
-  --text-secondary: #adb5bd;
-  --border-color: #404040;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  transition: all 0.3s ease;
-  line-height: 1.6;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-/* Header */
-.header {
-  background: var(--bg-secondary);
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--border-color);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(10px);
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: var(--primary);
-}
-
-.logo-icon {
-  background: var(--primary);
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s ease;
-}
-
-.logo:hover .logo-icon {
-  transform: rotate(15deg) scale(1.1);
-}
-
-.controls {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-icon::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: var(--primary);
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  transform: translate(-50%, -50%);
-}
-
-.btn-icon:hover::before {
-  width: 100%;
-  height: 100%;
-  opacity: 0.1;
-}
-
-.btn-icon:hover {
-  color: var(--text-primary);
-  transform: translateY(-2px);
-}
-
-/* Hero Section */
-.hero {
-  text-align: center;
-  padding: 4rem 0 2rem;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  color: white;
-  border-radius: 0 0 20px 20px;
-  margin-bottom: 2rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.hero::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><polygon fill="rgba(255,255,255,0.05)" points="0,1000 1000,0 1000,1000"/></svg>');
-  background-size: cover;
-}
-
-.hero h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  font-weight: 800;
-  position: relative;
-  animation: fadeInUp 0.8s ease;
-}
-
-.hero p {
-  font-size: 1.2rem;
-  max-width: 600px;
-  margin: 0 auto 2rem;
-  opacity: 0.9;
-  position: relative;
-  animation: fadeInUp 0.8s ease 0.2s both;
-}
-
-.hero-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  position: relative;
-  animation: fadeInUp 0.8s ease 0.4s both;
-}
-
-.btn {
-  background: white;
-  color: var(--primary);
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 50px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  transition: left 0.5s;
-}
-
-.btn:hover::before {
-  left: 100%;
-}
-
-.btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-secondary {
-  background: transparent;
-  color: white;
-  border: 2px solid white;
-}
-
-.btn-secondary:hover {
-  background: white;
-  color: var(--primary);
-}
-
-.btn-sm {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-}
-
-/* Quick Actions */
-.quick-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin: 2rem 0;
-}
-
-.quick-action-card {
-  background: var(--bg-card);
-  padding: 1.5rem;
-  border-radius: 12px;
-  text-align: center;
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-.quick-action-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--primary), var(--primary-light));
-  transform: scaleX(0);
-  transition: transform 0.3s ease;
-}
-
-.quick-action-card:hover::before {
-  transform: scaleX(1);
-}
-
-.quick-action-card:hover {
-  transform: translateY(-5px);
-  border-color: var(--primary);
-  box-shadow: var(--shadow-hover);
-}
-
-.quick-action-icon {
-  width: 60px;
-  height: 60px;
-  background: var(--primary);
-  color: white;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1rem;
-  font-size: 1.5rem;
-  transition: all 0.3s ease;
-}
-
-.quick-action-card:hover .quick-action-icon {
-  transform: scale(1.1) rotate(5deg);
-  background: var(--primary-light);
-}
-
-/* Stats */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  margin: 2rem 0;
-}
-
-.stat-card {
-  background: var(--bg-card);
-  padding: 1.5rem;
-  border-radius: 12px;
-  text-align: center;
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, var(--primary) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.stat-card:hover::before {
-  opacity: 0.05;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
-}
-
-.stat-number {
-  font-size: 2rem;
-  font-weight: bold;
-  color: var(--primary);
-  display: block;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover .stat-number {
-  transform: scale(1.1);
-}
-
-.stat-label {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  position: relative;
-}
-
-/* Filters */
-.filters {
-  background: var(--bg-card);
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin: 2rem 0;
-  border: 1px solid var(--border-color);
-}
-
-.filter-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
-  gap: 1rem;
-  align-items: end;
-}
-
-@media (max-width: 768px) {
-  .filter-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-label {
-  font-weight: 600;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-input, select, textarea {
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 1rem;
-  transition: all 0.3s ease;
-}
-
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-  transform: translateY(-1px);
-}
-
-input.error, select.error, textarea.error {
-  border-color: var(--danger);
-  animation: shake 0.5s;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
-
-/* Code Form */
-.code-form {
-  background: var(--bg-card);
-  padding: 2rem;
-  border-radius: 12px;
-  margin: 2rem 0;
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-}
-
-.code-form:hover {
-  box-shadow: var(--shadow);
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.form-group.full-width {
-  grid-column: 1 / -1;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--primary-dark);
-  transform: translateY(-2px);
-}
-
-/* Code Cards */
-.code-list {
-  display: grid;
-  gap: 1.5rem;
-  margin: 2rem 0;
-}
-
-.code-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1.5rem;
-  transition: all 0.3s ease;
-  position: relative;
-  animation: slideIn 0.5s ease;
-}
-
-.code-card:hover {
-  border-color: var(--primary);
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.code-title-section {
-  flex: 1;
-}
-
-.code-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-  transition: color 0.3s ease;
-}
-
-.code-card:hover .code-title {
-  color: var(--primary);
-}
-
-.language-tag {
-  background: var(--primary);
-  color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.code-card:hover .language-tag {
-  background: var(--primary-light);
-  transform: scale(1.05);
-}
-
-.card-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.code-description {
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
-  line-height: 1.5;
-  transition: color 0.3s ease;
-}
-
-.code-card:hover .code-description {
-  color: var(--text-primary);
-}
-
-.code-meta {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-
-.code-meta span {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  transition: color 0.3s ease;
-}
-
-.code-card:hover .code-meta span {
-  color: var(--text-primary);
-}
-
-.code-block {
-  background: var(--dark);
-  color: var(--light);
-  padding: 1.5rem;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 1rem 0;
-  font-family: 'Fira Code', 'Courier New', monospace;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.code-block:hover {
-  opacity: 0.9;
-  transform: scale(1.01);
-}
-
-.code-block::after {
-  content: 'Click to view';
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.code-block:hover::after {
-  opacity: 1;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.vote-section {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.vote-btn {
-  background: none;
-  border: 1px solid var(--border-color);
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.vote-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-.vote-btn.loading {
-  background: var(--bg-secondary);
-}
-
-.vote-btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: currentColor;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  transform: translate(-50%, -50%);
-  opacity: 0.1;
-}
-
-.vote-btn:hover:not(:disabled)::before {
-  width: 100%;
-  height: 100%;
-}
-
-.like-btn:hover:not(:disabled) {
-  border-color: var(--success);
-  color: var(--success);
-  transform: scale(1.05);
-}
-
-.dislike-btn:hover:not(:disabled) {
-  border-color: var(--danger);
-  color: var(--danger);
-  transform: scale(1.05);
-}
-
-.comment-btn:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
-  transform: scale(1.05);
-}
-
-.score {
-  font-weight: bold;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  min-width: 30px;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.score.positive { 
-  color: var(--success);
-  background: rgba(76, 201, 240, 0.1);
-}
-.score.negative { 
-  color: var(--danger);
-  background: rgba(230, 57, 70, 0.1);
-}
-.score.neutral { 
-  color: var(--gray);
-  background: rgba(173, 181, 189, 0.1);
-}
-
-.comment-count {
-  background: var(--primary);
-  color: white;
-  border-radius: 10px;
-  padding: 0.1rem 0.4rem;
-  font-size: 0.7rem;
-  margin-left: 0.25rem;
-  transition: all 0.3s ease;
-}
-
-.vote-btn:hover:not(:disabled) .comment-count {
-  background: var(--primary-light);
-  transform: scale(1.1);
-}
-
-.engagement-hint {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  font-style: italic;
-  transition: color 0.3s ease;
-}
-
-.code-card:hover .engagement-hint {
-  color: var(--text-primary);
-}
-
-/* Comments Section */
-.comments-section {
-  margin-top: 1.5rem;
-  border-top: 1px solid var(--border-color);
-  padding-top: 1rem;
-  animation: slideDown 0.3s ease;
-}
-
-.comments-header {
-  margin-bottom: 1rem;
-}
-
-.comments-header h4 {
-  color: var(--text-primary);
-  font-size: 1.1rem;
-}
-
-.comments-list {
-  max-height: 300px;
-  overflow-y: auto;
-  margin-bottom: 1rem;
-}
-
-.comment {
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  transition: all 0.3s ease;
-  animation: slideIn 0.3s ease;
-}
-
-.comment:hover {
-  transform: translateX(5px);
-  box-shadow: var(--shadow);
-}
-
-.comment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.comment-author {
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.comment-date {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.comment-text {
-  color: var(--text-primary);
-  line-height: 1.5;
-}
-
-.no-comments {
-  text-align: center;
-  color: var(--text-secondary);
-  padding: 1rem;
-  font-style: italic;
-}
-
-.add-comment {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.comment-input {
-  width: 100%;
-  resize: vertical;
-  min-height: 60px;
-  transition: all 0.3s ease;
-}
-
-.comment-input:focus {
-  transform: translateY(-1px);
-}
-
-.comments-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  color: var(--text-secondary);
-}
-
-.delete-comment-btn {
-  color: var(--danger);
-  transition: all 0.3s ease;
-}
-
-.delete-comment-btn:hover {
-  background: rgba(230, 57, 70, 0.1);
-  transform: scale(1.1);
-}
-
-/* Notifications */
-#notifications {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.notification {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-left: 4px solid var(--primary);
-  padding: 1rem;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 300px;
-  box-shadow: var(--shadow-hover);
-  animation: slideInRight 0.3s ease;
-  transition: all 0.3s ease;
-}
-
-.notification:hover {
-  transform: translateX(-5px);
-}
-
-@keyframes slideInRight {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-.notification.success { border-left-color: var(--success); }
-.notification.error { border-left-color: var(--danger); }
-.notification.warning { border-left-color: var(--warning); }
-
-.notification-close {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  margin-left: auto;
-  transition: all 0.3s ease;
-}
-
-.notification-close:hover {
-  color: var(--text-primary);
-  transform: scale(1.1);
-}
-
-/* Loading */
-.loading {
-  display: none;
-  justify-content: center;
-  align-items: center;
-  padding: 3rem;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--border-color);
-  border-left: 4px solid var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-secondary);
-  animation: fadeIn 0.5s ease;
-}
-
-.empty-state i {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-  transition: all 0.3s ease;
-}
-
-.empty-state:hover i {
-  transform: scale(1.1);
-  opacity: 0.7;
-}
-
-.empty-state a {
-  color: var(--primary);
-  text-decoration: none;
-  transition: all 0.3s ease;
-}
-
-.empty-state a:hover {
-  text-decoration: underline;
-  color: var(--primary-light);
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    max-height: 0;
-  }
-  to {
-    opacity: 1;
-    max-height: 500px;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .container {
-    padding: 0 15px;
-  }
-  
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .controls {
-    justify-content: space-between;
-  }
-  
-  .code-meta {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .hero h1 {
-    font-size: 2rem;
-  }
-  
-  .card-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .engagement-hint {
-    text-align: center;
-  }
-  
-  .vote-section {
-    justify-content: center;
-  }
-  
-  .notification {
-    min-width: 250px;
-    margin: 0 10px;
-  }
-}
-
-/* Floating Action Button */
-.fab {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 60px;
-  height: 60px;
-  background: var(--primary);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  cursor: pointer;
-  box-shadow: var(--shadow-hover);
-  transition: all 0.3s ease;
-  z-index: 100;
-  animation: bounce 2s infinite;
-}
-
-.fab:hover {
-  transform: scale(1.1) rotate(90deg);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-  background: var(--primary-light);
-}
-
-@keyframes bounce {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-10px);
-  }
-  60% {
-    transform: translateY(-5px);
-  }
-}
-
-/* User name input in header */
-.user-name-input {
-  max-width: 150px;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-}
-
-.user-name-input:focus {
-  max-width: 200px;
-}
-
-/* Enhanced scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-light);
-}
-
-/* Selection color */
-::selection {
-  background: var(--primary);
-  color: white;
-}
-
-/* Focus states for accessibility */
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-/* Print styles */
-@media print {
-  .fab,
-  .notification,
-  .btn-icon {
-    display: none !important;
-  }
-  
-  .code-card {
-    break-inside: avoid;
-    border: 1px solid #000;
-  }
-}
+    :root {
+      --primary: #4361ee;
+      --primary-light: #4895ef;
+      --primary-dark: #3a0ca3;
+      --success: #4cc9f0;
+      --warning: #f72585;
+      --danger: #e63946;
+      --dark: #1d3557;
+      --light: #f1faee;
+      --gray: #adb5bd;
+      --border: #a8dadc;
+    }
+
+    .light-theme {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8f9fa;
+      --bg-card: #ffffff;
+      --text-primary: #2b2d42;
+      --text-secondary: #6c757d;
+      --border-color: #dee2e6;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .dark-theme {
+      --bg-primary: #121212;
+      --bg-secondary: #1e1e1e;
+      --bg-card: #2d2d2d;
+      --text-primary: #e9ecef;
+      --text-secondary: #adb5bd;
+      --border-color: #404040;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .logo-icon {
+      background: var(--primary);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-icon:hover {
+      background: var(--border-color);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 4rem 0 2rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: white;
+      border-radius: 0 0 20px 20px;
+      margin-bottom: 2rem;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      font-weight: 800;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      opacity: 0.9;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: white;
+      color: var(--primary);
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: white;
+      border: 2px solid white;
+    }
+
+    .btn-secondary:hover {
+      background: white;
+      color: var(--primary);
+    }
+
+    .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .quick-action-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .quick-action-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+      box-shadow: var(--shadow);
+    }
+
+    .quick-action-icon {
+      width: 60px;
+      height: 60px;
+      background: var(--primary);
+      color: white;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 1.5rem;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary);
+      display: block;
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Filters */
+    .filters {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    @media (max-width: 768px) {
+      .filter-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    input, select, textarea {
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    input.error, select.error, textarea.error {
+      border-color: var(--danger);
+      animation: shake 0.5s;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    /* Code Form */
+    .code-form {
+      background: var(--bg-card);
+      padding: 2rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Code Cards */
+    .code-list {
+      display: grid;
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .code-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .code-card:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .code-title-section {
+      flex: 1;
+    }
+
+    .code-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .language-tag {
+      background: var(--primary);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .code-description {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .code-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .code-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .code-block {
+      background: var(--dark);
+      color: var(--light);
+      padding: 1.5rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 1rem 0;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .code-block:hover {
+      opacity: 0.9;
+    }
+
+    .code-block::after {
+      content: 'Click to view';
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .code-block:hover::after {
+      opacity: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .vote-section {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .vote-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .like-btn:hover {
+      border-color: var(--success);
+      color: var(--success);
+      transform: scale(1.05);
+    }
+
+    .dislike-btn:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+      transform: scale(1.05);
+    }
+
+    .comment-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: scale(1.05);
+    }
+
+    .score {
+      font-weight: bold;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      min-width: 30px;
+      text-align: center;
+    }
+
+    .score.positive { 
+      color: var(--success);
+      background: rgba(76, 201, 240, 0.1);
+    }
+    .score.negative { 
+      color: var(--danger);
+      background: rgba(230, 57, 70, 0.1);
+    }
+    .score.neutral { 
+      color: var(--gray);
+      background: rgba(173, 181, 189, 0.1);
+    }
+
+    .comment-count {
+      background: var(--primary);
+      color: white;
+      border-radius: 10px;
+      padding: 0.1rem 0.4rem;
+      font-size: 0.7rem;
+      margin-left: 0.25rem;
+    }
+
+    .engagement-hint {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    /* Comments Section */
+    .comments-section {
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+    }
+
+    .comments-header {
+      margin-bottom: 1rem;
+    }
+
+    .comments-header h4 {
+      color: var(--text-primary);
+      font-size: 1.1rem;
+    }
+
+    .comments-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+
+    .comment {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .comment-author {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .comment-date {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .comment-text {
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .no-comments {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 1rem;
+      font-style: italic;
+    }
+
+    .add-comment {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .comment-input {
+      width: 100%;
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .comments-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      color: var(--text-secondary);
+    }
+
+    .delete-comment-btn {
+      color: var(--danger);
+    }
+
+    .delete-comment-btn:hover {
+      background: rgba(230, 57, 70, 0.1);
+    }
+
+    /* Notifications */
+    #notifications {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .notification {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--primary);
+      padding: 1rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 300px;
+      box-shadow: var(--shadow);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .notification.success { border-left-color: var(--success); }
+    .notification.error { border-left-color: var(--danger); }
+    .notification.warning { border-left-color: var(--warning); }
+
+    .notification-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      margin-left: auto;
+    }
+
+    /* Loading */
+    .loading {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 3rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-left: 4px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .empty-state a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 15px;
+      }
+      
+      .header-content {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .controls {
+        justify-content: space-between;
+      }
+      
+      .code-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .hero h1 {
+        font-size: 2rem;
+      }
+      
+      .card-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .engagement-hint {
+        text-align: center;
+      }
+      
+      .vote-section {
+        justify-content: center;
+      }
+    }
+
+    /* Floating Action Button */
+    .fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 60px;
+      height: 60px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+
+    .fab:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    /* User name input in header */
+    .user-name-input {
+      max-width: 150px;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body class="light-theme">
- <!-- Notifications Container -->
+  <!-- Notifications Container -->
   <div id="notifications"></div>
 
   <!-- Header -->
@@ -1334,3 +1769,4 @@ textarea:focus-visible {
   </div>
 </body>
 </html>
+
