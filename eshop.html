@@ -57,7 +57,7 @@
     let currentUser = null;
     let allCodes = [];
     let comments = {}; // Store comments by code ID
-    let userVotes = {}; // Cache for user votes to prevent spam
+    let voteInProgress = new Set(); // Track votes in progress to prevent spam
 
     // Initialize App
     function initApp() {
@@ -277,9 +277,6 @@
         // Load comments for all codes
         loadAllComments();
         
-        // Load user votes for all codes
-        loadUserVotes();
-        
         // Show helpful tip if no codes
         if (allCodes.length === 0) {
           setTimeout(() => {
@@ -293,19 +290,24 @@
       });
     }
 
-    // Voting System - FIXED
+    // Voting System - FIXED to prevent spam
     async function handleVote(codeId, voteType) {
-      // Check if user has already voted in our cache first (client-side check)
-      if (userVotes[codeId]) {
-        showNotification('You have already voted on this code!', 'warning');
+      // Prevent multiple votes on the same post
+      const voteKey = `${codeId}_${currentUser.id}`;
+      
+      if (voteInProgress.has(voteKey)) {
+        showNotification('Vote in progress, please wait...', 'warning');
         return;
       }
-
-      // Double-check with server to prevent spam
+      
+      // Check if user has already voted
       if (await hasUserVoted(codeId)) {
         showNotification('You have already voted on this code!', 'warning');
         return;
       }
+
+      // Mark this vote as in progress
+      voteInProgress.add(voteKey);
 
       try {
         const ref = doc(db, "codes", codeId);
@@ -314,58 +316,28 @@
           lastModified: new Date().toISOString()
         });
         await recordVote(codeId, voteType);
-        
-        // Update local cache immediately to prevent spam
-        userVotes[codeId] = true;
-        
         showNotification(`Thanks for your ${voteType}!`, 'success');
       } catch (error) {
         console.error('Error voting:', error);
         showNotification('Error submitting vote', 'error');
+      } finally {
+        // Remove from in-progress set
+        voteInProgress.delete(voteKey);
       }
     }
 
     async function hasUserVoted(postId) {
-      try {
-        const voteDoc = await getDoc(doc(db, "votes", `${postId}_${currentUser.id}`));
-        return voteDoc.exists();
-      } catch (error) {
-        console.error('Error checking vote:', error);
-        return false;
-      }
+      const voteDoc = await getDoc(doc(db, "votes", `${postId}_${currentUser.id}`));
+      return voteDoc.exists();
     }
 
     async function recordVote(postId, voteType) {
-      try {
-        await setDoc(doc(db, "votes", `${postId}_${currentUser.id}`), {
-          postId: postId,
-          userId: currentUser.id,
-          voteType: voteType,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error('Error recording vote:', error);
-        throw error;
-      }
-    }
-
-    // Load all user votes for the current user
-    async function loadUserVotes() {
-      try {
-        const q = query(
-          collection(db, "votes"), 
-          where("userId", "==", currentUser.id)
-        );
-        const querySnapshot = await getDocs(q);
-        
-        userVotes = {};
-        querySnapshot.forEach((doc) => {
-          const vote = doc.data();
-          userVotes[vote.postId] = true;
-        });
-      } catch (error) {
-        console.error("Error loading user votes:", error);
-      }
+      await setDoc(doc(db, "votes", `${postId}_${currentUser.id}`), {
+        postId: postId,
+        userId: currentUser.id,
+        voteType: voteType,
+        timestamp: new Date().toISOString()
+      });
     }
 
     // Delete Functionality
@@ -659,7 +631,6 @@
         const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
         const views = code.views || 0;
         const commentCount = comments[code.id] ? comments[code.id].length : 0;
-        const hasVoted = userVotes[code.id] || false;
         
         return `
           <div class="code-card" data-id="${code.id}">
@@ -705,18 +676,14 @@
             
             <div class="card-footer">
               <div class="vote-section">
-                <button class="vote-btn like-btn ${hasVoted ? 'disabled' : ''}" 
-                        onclick="${hasVoted ? '' : `handleVote('${code.id}', 'like')`}" 
-                        ${hasVoted ? 'disabled' : ''}>
+                <button class="vote-btn like-btn" onclick="handleVote('${code.id}', 'like')">
                   <i class="fas fa-thumbs-up"></i>
                   <span>${code.likes || 0}</span>
                 </button>
                 <div class="score ${scoreColor}">
                   ${netScore}
                 </div>
-                <button class="vote-btn dislike-btn ${hasVoted ? 'disabled' : ''}" 
-                        onclick="${hasVoted ? '' : `handleVote('${code.id}', 'dislike')`}" 
-                        ${hasVoted ? 'disabled' : ''}>
+                <button class="vote-btn dislike-btn" onclick="handleVote('${code.id}', 'dislike')">
                   <i class="fas fa-thumbs-down"></i>
                   <span>${code.dislikes || 0}</span>
                 </button>
@@ -726,10 +693,7 @@
                 </button>
               </div>
               <div class="engagement-hint">
-                ${hasVoted ? '✅ You voted on this code' : 
-                  netScore >= 5 ? '🔥 Popular!' : 
-                  netScore <= -3 ? '💡 Could use improvement' : 
-                  '💙 Be the first to vote!'}
+                ${netScore >= 5 ? '🔥 Popular!' : netScore <= -3 ? '💡 Could use improvement' : '💙 Be the first to vote!'}
               </div>
             </div>
             
@@ -1354,18 +1318,13 @@
       gap: 0.5rem;
     }
 
-    .vote-btn.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .like-btn:hover:not(.disabled) {
+    .like-btn:hover {
       border-color: var(--success);
       color: var(--success);
       transform: scale(1.05);
     }
 
-    .dislike-btn:hover:not(.disabled) {
+    .dislike-btn:hover {
       border-color: var(--danger);
       color: var(--danger);
       transform: scale(1.05);
