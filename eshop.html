@@ -22,8 +22,7 @@
       query,
       orderBy,
       where,
-      getDocs,
-      runTransaction
+      getDocs
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -57,9 +56,8 @@
     // State
     let currentUser = null;
     let allCodes = [];
-    let comments = {};
-    let voteLocks = new Map(); // Track vote states per post
-    let userVotes = new Map(); // Cache user votes to prevent spam
+    let comments = {}; // Store comments by code ID
+    let userVotes = {}; // Store user votes by code ID
 
     // Initialize App
     function initApp() {
@@ -67,6 +65,8 @@
       setupEventListeners();
       loadLanguages();
       loadStats();
+      
+      // Auto-detect code language from input
       setupLanguageDetection();
     }
 
@@ -81,9 +81,6 @@
       localStorage.setItem('userId', currentUser.id);
       userNameInput.value = currentUser.name;
       applyTheme(currentUser.theme);
-      
-      // Load cached votes for this user
-      loadCachedVotes();
     }
 
     function generateUserId() {
@@ -94,30 +91,6 @@
       currentUser.name = userNameInput.value.trim() || 'Anonymous Coder';
       localStorage.setItem('userName', currentUser.name);
       showNotification('Profile updated!', 'success');
-    }
-
-    // Load cached votes from localStorage
-    function loadCachedVotes() {
-      const cachedVotes = localStorage.getItem(`votes_${currentUser.id}`);
-      if (cachedVotes) {
-        try {
-          const votes = JSON.parse(cachedVotes);
-          userVotes = new Map(Object.entries(votes));
-        } catch (e) {
-          console.error('Error loading cached votes:', e);
-        }
-      }
-    }
-
-    // Save votes to localStorage
-    function saveVoteToCache(postId, voteType) {
-      userVotes.set(postId, {
-        voteType: voteType,
-        timestamp: Date.now()
-      });
-      
-      const votesObj = Object.fromEntries(userVotes);
-      localStorage.setItem(`votes_${currentUser.id}`, JSON.stringify(votesObj));
     }
 
     // Theme Management
@@ -262,6 +235,7 @@
         form.reset();
         updateStats();
         
+        // Show quick action to view their code
         setTimeout(() => {
           showNotification('Scroll down to see your code in the feed!', 'info');
         }, 1500);
@@ -300,8 +274,13 @@
         showLoading(false);
         updateStats();
         
+        // Load comments for all codes
         loadAllComments();
         
+        // Load user votes for all codes
+        loadUserVotes();
+        
+        // Show helpful tip if no codes
         if (allCodes.length === 0) {
           setTimeout(() => {
             showNotification('No codes yet! Be the first to share some code.', 'info');
@@ -314,122 +293,82 @@
       });
     }
 
-    // VOTING SYSTEM - COMPLETELY REWRITTEN TO PREVENT SPAM
+    // Load user votes for all codes
+    async function loadUserVotes() {
+      userVotes = {};
+      
+      try {
+        const q = query(collection(db, "votes"), where("userId", "==", currentUser.id));
+        const querySnapshot = await getDocs(q);
+        
+        querySnapshot.forEach((doc) => {
+          const vote = doc.data();
+          userVotes[vote.postId] = vote.voteType;
+        });
+        
+        // Update UI to reflect user's votes
+        updateVoteButtons();
+      } catch (error) {
+        console.error("Error loading user votes:", error);
+      }
+    }
+
+    // Update vote buttons to reflect user's votes
+    function updateVoteButtons() {
+      document.querySelectorAll('.code-card').forEach(card => {
+        const codeId = card.dataset.id;
+        const userVote = userVotes[codeId];
+        
+        const likeBtn = card.querySelector('.like-btn');
+        const dislikeBtn = card.querySelector('.dislike-btn');
+        
+        // Reset all buttons first
+        likeBtn.classList.remove('active');
+        dislikeBtn.classList.remove('active');
+        
+        // Apply active class based on user's vote
+        if (userVote === 'like') {
+          likeBtn.classList.add('active');
+        } else if (userVote === 'dislike') {
+          dislikeBtn.classList.add('active');
+        }
+      });
+    }
+
+    // Voting System - FIXED VERSION
     async function handleVote(codeId, voteType) {
-      // IMMEDIATE CLIENT-SIDE CHECK - No waiting for async
-      if (userVotes.has(codeId)) {
+      // Check if user has already voted for this code
+      if (userVotes[codeId]) {
         showNotification('You have already voted on this code!', 'warning');
         return;
       }
 
-      // Check if vote is already in progress for this post
-      if (voteLocks.has(codeId)) {
-        showNotification('Vote in progress, please wait...', 'warning');
-        return;
-      }
-
-      // Lock this vote immediately
-      voteLocks.set(codeId, true);
-      
-      // Immediately update UI to show vote is processing
-      const voteBtn = document.querySelector(`.code-card[data-id="${codeId}"] .${voteType}-btn`);
-      if (voteBtn) {
-        const originalHTML = voteBtn.innerHTML;
-        voteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        voteBtn.disabled = true;
-      }
-
       try {
-        // Use Firebase transaction for atomic operation
-        await runTransaction(db, async (transaction) => {
-          const codeRef = doc(db, "codes", codeId);
-          const voteRef = doc(db, "votes", `${codeId}_${currentUser.id}`);
-          
-          // Check if user already voted in this transaction
-          const voteDoc = await transaction.get(voteRef);
-          if (voteDoc.exists()) {
-            throw new Error('ALREADY_VOTED');
-          }
-          
-          // Get current code data
-          const codeDoc = await transaction.get(codeRef);
-          if (!codeDoc.exists()) {
-            throw new Error('CODE_NOT_FOUND');
-          }
-          
-          const currentLikes = codeDoc.data().likes || 0;
-          const currentDislikes = codeDoc.data().dislikes || 0;
-          
-          // Update vote count
-          if (voteType === 'like') {
-            transaction.update(codeRef, { 
-              likes: currentLikes + 1,
-              lastModified: new Date().toISOString()
-            });
-          } else {
-            transaction.update(codeRef, { 
-              dislikes: currentDislikes + 1,
-              lastModified: new Date().toISOString()
-            });
-          }
-          
-          // Record the vote
-          transaction.set(voteRef, {
-            postId: codeId,
-            userId: currentUser.id,
-            voteType: voteType,
-            timestamp: new Date().toISOString()
-          });
+        const ref = doc(db, "codes", codeId);
+        await updateDoc(ref, { 
+          [voteType + 's']: increment(1),
+          lastModified: new Date().toISOString()
         });
         
-        // Update local cache immediately
-        saveVoteToCache(codeId, voteType);
-        showNotification(`Thanks for your ${voteType}!`, 'success');
+        // Record the vote in the votes collection
+        await setDoc(doc(db, "votes", `${codeId}_${currentUser.id}`), {
+          postId: codeId,
+          userId: currentUser.id,
+          voteType: voteType,
+          timestamp: new Date().toISOString()
+        });
         
+        // Update local state
+        userVotes[codeId] = voteType;
+        
+        // Update UI
+        updateVoteButtons();
+        
+        showNotification(`Thanks for your ${voteType}!`, 'success');
       } catch (error) {
         console.error('Error voting:', error);
-        
-        if (error.message === 'ALREADY_VOTED') {
-          showNotification('You have already voted on this code!', 'warning');
-          // Update cache to reflect this
-          saveVoteToCache(codeId, 'unknown');
-        } else {
-          showNotification('Error submitting vote', 'error');
-        }
-      } finally {
-        // Always remove lock and restore UI
-        voteLocks.delete(codeId);
-        
-        // Restore button state
-        if (voteBtn) {
-          setTimeout(() => {
-            voteBtn.disabled = false;
-            // The real-time listener will update the counts automatically
-          }, 500);
-        }
+        showNotification('Error submitting vote', 'error');
       }
-    }
-
-    // Optimized version for checking votes - uses cache first
-    async function hasUserVoted(postId) {
-      // First check local cache (instant)
-      if (userVotes.has(postId)) {
-        return true;
-      }
-      
-      // Then check Firebase (only if cache miss)
-      try {
-        const voteDoc = await getDoc(doc(db, "votes", `${postId}_${currentUser.id}`));
-        if (voteDoc.exists()) {
-          // Update cache
-          saveVoteToCache(postId, voteDoc.data().voteType);
-          return true;
-        }
-      } catch (error) {
-        console.error('Error checking vote:', error);
-      }
-      
-      return false;
     }
 
     // Delete Functionality
@@ -479,6 +418,7 @@
       
       sortCodes(filtered);
       
+      // Show results count
       if (searchTerm || languageFilter) {
         const resultsText = filtered.length === 1 ? 'result' : 'results';
         showNotification(`Found ${filtered.length} ${resultsText}`, 'info', 2000);
@@ -530,10 +470,12 @@
           });
         });
         
+        // Sort comments by date for each code
         Object.keys(comments).forEach(codeId => {
           comments[codeId].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
         });
         
+        // Update UI with comment counts
         updateCommentCounts();
       } catch (error) {
         console.error("Error loading comments:", error);
@@ -592,6 +534,7 @@
       try {
         await deleteDoc(doc(db, "comments", commentId));
         
+        // Remove from local state
         if (comments[codeId]) {
           comments[codeId] = comments[codeId].filter(comment => comment.id !== commentId);
         }
@@ -631,6 +574,7 @@
         return;
       }
       
+      // Show loading
       commentsSection.innerHTML = `
         <div class="comments-loading">
           <div class="spinner"></div>
@@ -639,6 +583,7 @@
       `;
       commentsSection.style.display = 'block';
       
+      // Load comments if not already loaded
       if (!comments[codeId]) {
         loadCommentsForCode(codeId).then(() => {
           renderComments(codeId);
@@ -691,13 +636,14 @@
       const success = await addComment(codeId, commentText);
       if (success) {
         commentInput.value = '';
+        // Reload comments for this code
         await loadCommentsForCode(codeId);
         renderComments(codeId);
         updateCommentCounts();
       }
     }
 
-    // Rendering - Updated to show disabled state for voted posts
+    // Rendering
     function renderCodes(codes) {
       if (codes.length === 0) {
         codeList.innerHTML = `
@@ -716,7 +662,7 @@
         const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
         const views = code.views || 0;
         const commentCount = comments[code.id] ? comments[code.id].length : 0;
-        const hasVoted = userVotes.has(code.id);
+        const userVote = userVotes[code.id];
         
         return `
           <div class="code-card" data-id="${code.id}">
@@ -762,18 +708,14 @@
             
             <div class="card-footer">
               <div class="vote-section">
-                <button class="vote-btn like-btn ${hasVoted ? 'voted' : ''}" 
-                        onclick="handleVote('${code.id}', 'like')"
-                        ${hasVoted ? 'disabled' : ''}>
+                <button class="vote-btn like-btn ${userVote === 'like' ? 'active' : ''}" onclick="handleVote('${code.id}', 'like')">
                   <i class="fas fa-thumbs-up"></i>
                   <span>${code.likes || 0}</span>
                 </button>
                 <div class="score ${scoreColor}">
                   ${netScore}
                 </div>
-                <button class="vote-btn dislike-btn ${hasVoted ? 'voted' : ''}" 
-                        onclick="handleVote('${code.id}', 'dislike')"
-                        ${hasVoted ? 'disabled' : ''}>
+                <button class="vote-btn dislike-btn ${userVote === 'dislike' ? 'active' : ''}" onclick="handleVote('${code.id}', 'dislike')">
                   <i class="fas fa-thumbs-down"></i>
                   <span>${code.dislikes || 0}</span>
                 </button>
@@ -783,7 +725,7 @@
                 </button>
               </div>
               <div class="engagement-hint">
-                ${hasVoted ? '✅ You voted!' : netScore >= 5 ? '🔥 Popular!' : netScore <= -3 ? '💡 Could use improvement' : '💙 Be the first to vote!'}
+                ${netScore >= 5 ? '🔥 Popular!' : netScore <= -3 ? '💡 Could use improvement' : '💙 Be the first to vote!'}
               </div>
             </div>
             
@@ -792,6 +734,7 @@
         `;
       }).join('');
 
+      // Attach view increment on code block click
       codeList.querySelectorAll('.code-block').forEach(block => {
         block.addEventListener('click', async () => {
           const codeId = block.closest('.code-card').dataset.id;
@@ -830,6 +773,7 @@
           await navigator.clipboard.writeText(code.code);
           showNotification('Code copied to clipboard! 📋', 'success');
         } catch (err) {
+          // Fallback for older browsers
           const textArea = document.createElement('textarea');
           textArea.value = code.code;
           document.body.appendChild(textArea);
@@ -842,6 +786,7 @@
     }
 
     function showNotification(message, type = 'info', duration = 5000) {
+      // Remove any existing notifications of the same message
       const existingNotifications = document.querySelectorAll('.notification');
       existingNotifications.forEach(notification => {
         if (notification.textContent.includes(message)) {
@@ -897,6 +842,7 @@
     }
 
     function loadStats() {
+      // Initialize with current data
       updateStats();
     }
 
@@ -914,24 +860,6 @@
   </script>
 
   <style>
-    /* Add this to your existing CSS */
-    .vote-btn.voted {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-    
-    .vote-btn.voted:hover {
-      border-color: var(--border-color) !important;
-      color: inherit !important;
-    }
-    
-    .vote-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    
-    /* Rest of your existing CSS remains the same */
     :root {
       --primary: #4361ee;
       --primary-light: #4895ef;
@@ -985,8 +913,745 @@
       padding: 0 20px;
     }
 
-    /* Rest of your CSS remains exactly the same... */
-    /* ... (all your existing CSS code) ... */
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .logo-icon {
+      background: var(--primary);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-icon:hover {
+      background: var(--border-color);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 4rem 0 2rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: white;
+      border-radius: 0 0 20px 20px;
+      margin-bottom: 2rem;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      font-weight: 800;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      opacity: 0.9;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: white;
+      color: var(--primary);
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: white;
+      border: 2px solid white;
+    }
+
+    .btn-secondary:hover {
+      background: white;
+      color: var(--primary);
+    }
+
+    .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .quick-action-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .quick-action-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+      box-shadow: var(--shadow);
+    }
+
+    .quick-action-icon {
+      width: 60px;
+      height: 60px;
+      background: var(--primary);
+      color: white;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 1.5rem;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary);
+      display: block;
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Filters */
+    .filters {
+      background: var(--bg-card);
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    @media (max-width: 768px) {
+      .filter-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    input, select, textarea {
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+
+    input.error, select.error, textarea.error {
+      border-color: var(--danger);
+      animation: shake 0.5s;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    /* Code Form */
+    .code-form {
+      background: var(--bg-card);
+      padding: 2rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    /* Code Cards */
+    .code-list {
+      display: grid;
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .code-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .code-card:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .code-title-section {
+      flex: 1;
+    }
+
+    .code-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .language-tag {
+      background: var(--primary);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .code-description {
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .code-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .code-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .code-block {
+      background: var(--dark);
+      color: var(--light);
+      padding: 1.5rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 1rem 0;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .code-block:hover {
+      opacity: 0.9;
+    }
+
+    .code-block::after {
+      content: 'Click to view';
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .code-block:hover::after {
+      opacity: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .vote-section {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .vote-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .vote-btn.active {
+      border-color: var(--primary);
+      background: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+    }
+
+    .like-btn:hover, .like-btn.active {
+      border-color: var(--success);
+      color: var(--success);
+      transform: scale(1.05);
+    }
+
+    .dislike-btn:hover, .dislike-btn.active {
+      border-color: var(--danger);
+      color: var(--danger);
+      transform: scale(1.05);
+    }
+
+    .comment-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: scale(1.05);
+    }
+
+    .score {
+      font-weight: bold;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      min-width: 30px;
+      text-align: center;
+    }
+
+    .score.positive { 
+      color: var(--success);
+      background: rgba(76, 201, 240, 0.1);
+    }
+    .score.negative { 
+      color: var(--danger);
+      background: rgba(230, 57, 70, 0.1);
+    }
+    .score.neutral { 
+      color: var(--gray);
+      background: rgba(173, 181, 189, 0.1);
+    }
+
+    .comment-count {
+      background: var(--primary);
+      color: white;
+      border-radius: 10px;
+      padding: 0.1rem 0.4rem;
+      font-size: 0.7rem;
+      margin-left: 0.25rem;
+    }
+
+    .engagement-hint {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    /* Comments Section */
+    .comments-section {
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+    }
+
+    .comments-header {
+      margin-bottom: 1rem;
+    }
+
+    .comments-header h4 {
+      color: var(--text-primary);
+      font-size: 1.1rem;
+    }
+
+    .comments-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+
+    .comment {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .comment-author {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .comment-date {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .comment-text {
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .no-comments {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 1rem;
+      font-style: italic;
+    }
+
+    .add-comment {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .comment-input {
+      width: 100%;
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .comments-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      color: var(--text-secondary);
+    }
+
+    .delete-comment-btn {
+      color: var(--danger);
+    }
+
+    .delete-comment-btn:hover {
+      background: rgba(230, 57, 70, 0.1);
+    }
+
+    /* Notifications */
+    #notifications {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .notification {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--primary);
+      padding: 1rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 300px;
+      box-shadow: var(--shadow);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .notification.success { border-left-color: var(--success); }
+    .notification.error { border-left-color: var(--danger); }
+    .notification.warning { border-left-color: var(--warning); }
+
+    .notification-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      margin-left: auto;
+    }
+
+    /* Loading */
+    .loading {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 3rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-left: 4px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .empty-state a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 15px;
+      }
+      
+      .header-content {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .controls {
+        justify-content: space-between;
+      }
+      
+      .code-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .hero h1 {
+        font-size: 2rem;
+      }
+      
+      .card-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .engagement-hint {
+        text-align: center;
+      }
+      
+      .vote-section {
+        justify-content: center;
+      }
+    }
+
+    /* Floating Action Button */
+    .fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 60px;
+      height: 60px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+
+    .fab:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    /* User name input in header */
+    .user-name-input {
+      max-width: 150px;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body class="light-theme">
