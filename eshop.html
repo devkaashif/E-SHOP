@@ -57,6 +57,7 @@
     let currentUser = null;
     let allCodes = [];
     let comments = {}; // Store comments by code ID
+    let userVotes = {}; // Cache for user votes to prevent spam
 
     // Initialize App
     function initApp() {
@@ -276,6 +277,9 @@
         // Load comments for all codes
         loadAllComments();
         
+        // Load user votes for all codes
+        loadUserVotes();
+        
         // Show helpful tip if no codes
         if (allCodes.length === 0) {
           setTimeout(() => {
@@ -289,8 +293,15 @@
       });
     }
 
-    // Voting System
+    // Voting System - FIXED
     async function handleVote(codeId, voteType) {
+      // Check if user has already voted in our cache first (client-side check)
+      if (userVotes[codeId]) {
+        showNotification('You have already voted on this code!', 'warning');
+        return;
+      }
+
+      // Double-check with server to prevent spam
       if (await hasUserVoted(codeId)) {
         showNotification('You have already voted on this code!', 'warning');
         return;
@@ -303,6 +314,10 @@
           lastModified: new Date().toISOString()
         });
         await recordVote(codeId, voteType);
+        
+        // Update local cache immediately to prevent spam
+        userVotes[codeId] = true;
+        
         showNotification(`Thanks for your ${voteType}!`, 'success');
       } catch (error) {
         console.error('Error voting:', error);
@@ -311,17 +326,46 @@
     }
 
     async function hasUserVoted(postId) {
-      const voteDoc = await getDoc(doc(db, "votes", `${postId}_${currentUser.id}`));
-      return voteDoc.exists();
+      try {
+        const voteDoc = await getDoc(doc(db, "votes", `${postId}_${currentUser.id}`));
+        return voteDoc.exists();
+      } catch (error) {
+        console.error('Error checking vote:', error);
+        return false;
+      }
     }
 
     async function recordVote(postId, voteType) {
-      await setDoc(doc(db, "votes", `${postId}_${currentUser.id}`), {
-        postId: postId,
-        userId: currentUser.id,
-        voteType: voteType,
-        timestamp: new Date().toISOString()
-      });
+      try {
+        await setDoc(doc(db, "votes", `${postId}_${currentUser.id}`), {
+          postId: postId,
+          userId: currentUser.id,
+          voteType: voteType,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Error recording vote:', error);
+        throw error;
+      }
+    }
+
+    // Load all user votes for the current user
+    async function loadUserVotes() {
+      try {
+        const q = query(
+          collection(db, "votes"), 
+          where("userId", "==", currentUser.id)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        userVotes = {};
+        querySnapshot.forEach((doc) => {
+          const vote = doc.data();
+          userVotes[vote.postId] = true;
+        });
+      } catch (error) {
+        console.error("Error loading user votes:", error);
+      }
     }
 
     // Delete Functionality
@@ -615,6 +659,7 @@
         const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
         const views = code.views || 0;
         const commentCount = comments[code.id] ? comments[code.id].length : 0;
+        const hasVoted = userVotes[code.id] || false;
         
         return `
           <div class="code-card" data-id="${code.id}">
@@ -660,14 +705,18 @@
             
             <div class="card-footer">
               <div class="vote-section">
-                <button class="vote-btn like-btn" onclick="handleVote('${code.id}', 'like')">
+                <button class="vote-btn like-btn ${hasVoted ? 'disabled' : ''}" 
+                        onclick="${hasVoted ? '' : `handleVote('${code.id}', 'like')`}" 
+                        ${hasVoted ? 'disabled' : ''}>
                   <i class="fas fa-thumbs-up"></i>
                   <span>${code.likes || 0}</span>
                 </button>
                 <div class="score ${scoreColor}">
                   ${netScore}
                 </div>
-                <button class="vote-btn dislike-btn" onclick="handleVote('${code.id}', 'dislike')">
+                <button class="vote-btn dislike-btn ${hasVoted ? 'disabled' : ''}" 
+                        onclick="${hasVoted ? '' : `handleVote('${code.id}', 'dislike')`}" 
+                        ${hasVoted ? 'disabled' : ''}>
                   <i class="fas fa-thumbs-down"></i>
                   <span>${code.dislikes || 0}</span>
                 </button>
@@ -677,7 +726,10 @@
                 </button>
               </div>
               <div class="engagement-hint">
-                ${netScore >= 5 ? '🔥 Popular!' : netScore <= -3 ? '💡 Could use improvement' : '💙 Be the first to vote!'}
+                ${hasVoted ? '✅ You voted on this code' : 
+                  netScore >= 5 ? '🔥 Popular!' : 
+                  netScore <= -3 ? '💡 Could use improvement' : 
+                  '💙 Be the first to vote!'}
               </div>
             </div>
             
@@ -1302,13 +1354,18 @@
       gap: 0.5rem;
     }
 
-    .like-btn:hover {
+    .vote-btn.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .like-btn:hover:not(.disabled) {
       border-color: var(--success);
       color: var(--success);
       transform: scale(1.05);
     }
 
-    .dislike-btn:hover {
+    .dislike-btn:hover:not(.disabled) {
       border-color: var(--danger);
       color: var(--danger);
       transform: scale(1.05);
