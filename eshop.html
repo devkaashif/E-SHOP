@@ -5,6 +5,1200 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CodeShare - Share Code Effortlessly</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script type="module">
+    // Firebase Config
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      onSnapshot, 
+      doc, 
+      updateDoc, 
+      increment, 
+      getDoc, 
+      setDoc, 
+      deleteDoc,
+      query,
+      orderBy,
+      where,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { 
+      getAuth, 
+      createUserWithEmailAndPassword, 
+      signInWithEmailAndPassword, 
+      signOut, 
+      onAuthStateChanged,
+      updateProfile,
+      sendPasswordResetEmail
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0T-mS__FlN3QASJnmD0K6S5VNDiN2bxQ",
+      authDomain: "poplol-7209f.firebaseapp.com",
+      projectId: "poplol-7209f",
+      storageBucket: "poplol-7209f.appspot.com",
+      messagingSenderId: "105810834",
+      appId: "1:105810834:web:example"
+    };
+
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // DOM Elements
+    const form = document.getElementById('codeForm');
+    const titleInput = document.getElementById('title');
+    const codeInput = document.getElementById('code');
+    const languageSelect = document.getElementById('language');
+    const descriptionInput = document.getElementById('description');
+    const codeList = document.getElementById('codeList');
+    const searchInput = document.getElementById('searchInput');
+    const filterLanguage = document.getElementById('filterLanguage');
+    const sortSelect = document.getElementById('sortSelect');
+    const themeToggle = document.getElementById('themeToggle');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const userNameInput = document.getElementById('userName');
+    const quickActions = document.getElementById('quickActions');
+    const authModal = document.getElementById('authModal');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+    const showSignupLink = document.getElementById('showSignup');
+    const showLoginLink = document.getElementById('showLogin');
+    const userProfile = document.getElementById('userProfile');
+    const userAvatar = document.getElementById('userAvatar');
+    const userNameDisplay = document.getElementById('userNameDisplay');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const authButtons = document.getElementById('authButtons');
+
+    // State
+    let currentUser = null;
+    let allCodes = [];
+    let comments = {}; // Store comments by code ID
+    let votingInProgress = new Set(); // Track votes in progress
+
+    // Initialize App
+    function initApp() {
+      setupEventListeners();
+      loadLanguages();
+      loadStats();
+      
+      // Auto-detect code language from input
+      setupLanguageDetection();
+      
+      // Set up auth state listener
+      setupAuthListener();
+    }
+
+    // Auth Management
+    function setupAuthListener() {
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // User is signed in
+          currentUser = {
+            id: user.uid,
+            name: user.displayName || 'Anonymous Coder',
+            email: user.email,
+            theme: localStorage.getItem('theme') || 'light'
+          };
+          
+          localStorage.setItem('userId', currentUser.id);
+          userNameInput.value = currentUser.name;
+          applyTheme(currentUser.theme);
+          
+          // Update UI for logged in user
+          userProfile.style.display = 'flex';
+          authButtons.style.display = 'none';
+          userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+          userNameDisplay.textContent = currentUser.name;
+          
+          // Load data
+          setupRealtimeListener();
+          setupRealtimeCommentsListener();
+          
+          showNotification(`Welcome back, ${currentUser.name}!`, 'success');
+        } else {
+          // User is signed out
+          currentUser = null;
+          userProfile.style.display = 'none';
+          authButtons.style.display = 'flex';
+          
+          // Clear data
+          allCodes = [];
+          comments = {};
+          renderCodes([]);
+          
+          showNotification('Please sign in to share and interact with code', 'info');
+        }
+      });
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('signupConfirmPassword').value;
+      
+      if (!name || !email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        showNotification('Passwords do not match', 'error');
+        return;
+      }
+      
+      if (password.length < 6) {
+        showNotification('Password must be at least 6 characters', 'error');
+        return;
+      }
+      
+      const submitBtn = signupForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+      submitBtn.disabled = true;
+      
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, {
+          displayName: name
+        });
+        
+        showNotification('Account created successfully!', 'success');
+        closeAuthModal();
+        signupForm.reset();
+      } catch (error) {
+        console.error("Error signing up:", error);
+        let message = 'Error creating account';
+        
+        if (error.code === 'auth/email-already-in-use') {
+          message = 'Email is already in use';
+        } else if (error.code === 'auth/invalid-email') {
+          message = 'Invalid email address';
+        } else if (error.code === 'auth/weak-password') {
+          message = 'Password is too weak';
+        }
+        
+        showNotification(message, 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      
+      if (!email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+      }
+      
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+      submitBtn.disabled = true;
+      
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        
+        showNotification('Signed in successfully!', 'success');
+        closeAuthModal();
+        loginForm.reset();
+      } catch (error) {
+        console.error("Error signing in:", error);
+        let message = 'Error signing in';
+        
+        if (error.code === 'auth/invalid-credential') {
+          message = 'Invalid email or password';
+        } else if (error.code === 'auth/user-not-found') {
+          message = 'No account found with this email';
+        } else if (error.code === 'auth/wrong-password') {
+          message = 'Incorrect password';
+        }
+        
+        showNotification(message, 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function handleForgotPassword(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('resetEmail').value.trim();
+      
+      if (!email) {
+        showNotification('Please enter your email address', 'error');
+        return;
+      }
+      
+      const submitBtn = forgotPasswordForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+      submitBtn.disabled = true;
+      
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showNotification('Password reset email sent! Check your inbox.', 'success');
+        forgotPasswordForm.reset();
+        showLoginForm();
+      } catch (error) {
+        console.error("Error sending password reset email:", error);
+        let message = 'Error sending reset email';
+        
+        if (error.code === 'auth/user-not-found') {
+          message = 'No account found with this email';
+        } else if (error.code === 'auth/invalid-email') {
+          message = 'Invalid email address';
+        } else if (error.code === 'auth/too-many-requests') {
+          message = 'Too many attempts. Please try again later';
+        }
+        
+        showNotification(message, 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await signOut(auth);
+        showNotification('Signed out successfully', 'info');
+      } catch (error) {
+        console.error("Error signing out:", error);
+        showNotification('Error signing out', 'error');
+      }
+    }
+
+    function openAuthModal() {
+      authModal.style.display = 'flex';
+      showLoginForm();
+    }
+
+    function closeAuthModal() {
+      authModal.style.display = 'none';
+    }
+
+    function showLoginForm() {
+      loginForm.style.display = 'block';
+      signupForm.style.display = 'none';
+      forgotPasswordForm.style.display = 'none';
+    }
+
+    function showSignupForm() {
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'block';
+      forgotPasswordForm.style.display = 'none';
+    }
+
+    function showForgotPasswordForm() {
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'none';
+      forgotPasswordForm.style.display = 'block';
+    }
+
+    // User Management
+    function loadUserProfile() {
+      // This is now handled by the auth listener
+    }
+
+    function generateUserId() {
+      return 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    }
+
+    function saveUserProfile() {
+      if (!currentUser) {
+        showNotification('Please sign in to update your profile', 'warning');
+        return;
+      }
+      
+      const newName = userNameInput.value.trim();
+      if (!newName) {
+        showNotification('Please enter a name', 'warning');
+        return;
+      }
+      
+      // Update in Firebase Auth
+      updateProfile(auth.currentUser, {
+        displayName: newName
+      }).then(() => {
+        currentUser.name = newName;
+        userNameDisplay.textContent = newName;
+        userAvatar.textContent = newName.charAt(0).toUpperCase();
+        showNotification('Profile updated!', 'success');
+      }).catch((error) => {
+        console.error("Error updating profile:", error);
+        showNotification('Error updating profile', 'error');
+      });
+    }
+
+    // Theme Management
+    function applyTheme(theme) {
+      document.body.className = theme + '-theme';
+      themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+      localStorage.setItem('theme', theme);
+    }
+
+    // Language Management
+    function loadLanguages() {
+      const languages = [
+        'JavaScript', 'Python', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go',
+        'Swift', 'Kotlin', 'TypeScript', 'HTML', 'CSS', 'SQL', 'Rust', 'Shell',
+        'React', 'Vue', 'Angular', 'Node.js', 'Express', 'Django', 'Flask'
+      ];
+
+      languages.forEach(lang => {
+        const option1 = document.createElement('option');
+        option1.value = lang;
+        option1.textContent = lang;
+        languageSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = lang;
+        option2.textContent = lang;
+        filterLanguage.appendChild(option2);
+      });
+    }
+
+    // Auto-detect programming language from code
+    function setupLanguageDetection() {
+      codeInput.addEventListener('input', function() {
+        const code = this.value;
+        if (code.length > 20) {
+          const detectedLang = detectLanguage(code);
+          if (detectedLang && languageSelect.value === '') {
+            languageSelect.value = detectedLang;
+            showNotification(`We detected ${detectedLang} code! Language auto-selected.`, 'info');
+          }
+        }
+      });
+    }
+
+    function detectLanguage(code) {
+      const patterns = {
+        'JavaScript': /\b(function|const|let|var|=>|console\.log)\b/,
+        'Python': /\b(def|import|from|print|__name__)\b/,
+        'Java': /\b(public|class|static|void|System\.out\.println)\b/,
+        'HTML': /<[^>]+>/,
+        'CSS': /[.#][a-zA-Z][^{]*\{[^}]*\}/,
+        'PHP': /<\?php|\$[a-zA-Z_]/,
+        'SQL': /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE)\b/i
+      };
+
+      for (const [lang, pattern] of Object.entries(patterns)) {
+        if (pattern.test(code)) {
+          return lang;
+        }
+      }
+      return null;
+    }
+
+    // Event Listeners
+    function setupEventListeners() {
+      form.addEventListener('submit', handleSubmit);
+      searchInput.addEventListener('input', debounce(filterCodes, 300));
+      filterLanguage.addEventListener('change', filterCodes);
+      sortSelect.addEventListener('change', sortCodes);
+      themeToggle.addEventListener('click', toggleTheme);
+      userNameInput.addEventListener('change', saveUserProfile);
+      
+      // Auth event listeners
+      loginForm.addEventListener('submit', handleLogin);
+      signupForm.addEventListener('submit', handleSignup);
+      forgotPasswordForm.addEventListener('submit', handleForgotPassword);
+      showSignupLink.addEventListener('click', showSignupForm);
+      showLoginLink.addEventListener('click', showLoginForm);
+      document.getElementById('showLoginFromForgot').addEventListener('click', showLoginForm);
+      document.getElementById('forgotPasswordLink').addEventListener('click', showForgotPasswordForm);
+      logoutBtn.addEventListener('click', handleLogout);
+      document.getElementById('openAuthModal').addEventListener('click', openAuthModal);
+      authModal.addEventListener('click', (e) => {
+        if (e.target === authModal) {
+          closeAuthModal();
+        }
+      });
+      
+      // Quick actions
+      document.getElementById('quickShare').addEventListener('click', () => {
+        if (!currentUser) {
+          showNotification('Please sign in to share code', 'warning');
+          openAuthModal();
+          return;
+        }
+        document.getElementById('codeForm').scrollIntoView({ behavior: 'smooth' });
+        titleInput.focus();
+      });
+      
+      document.getElementById('quickDiscover').addEventListener('click', () => {
+        document.getElementById('codeList').scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    function toggleTheme() {
+      const newTheme = document.body.classList.contains('dark-theme') ? 'light' : 'dark';
+      applyTheme(newTheme);
+      showNotification(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode activated`, 'info');
+    }
+
+    // Debounce search for performance
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Code Submission
+    async function handleSubmit(e) {
+      e.preventDefault();
+      
+      if (!currentUser) {
+        showNotification('Please sign in to share code', 'warning');
+        openAuthModal();
+        return;
+      }
+      
+      const title = titleInput.value.trim();
+      const code = codeInput.value.trim();
+      const language = languageSelect.value;
+      const description = descriptionInput.value.trim();
+
+      if (!title || !code || !language) {
+        showNotification('Please fill in all required fields', 'error');
+        highlightEmptyFields();
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sharing...';
+      submitBtn.disabled = true;
+
+      try {
+        await addDoc(collection(db, "codes"), {
+          title,
+          code,
+          language,
+          description,
+          likes: 0,
+          dislikes: 0,
+          views: 0,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString()
+        });
+
+        showNotification('Code shared successfully! 🎉', 'success');
+        form.reset();
+        updateStats();
+        
+        // Show quick action to view their code
+        setTimeout(() => {
+          showNotification('Scroll down to see your code in the feed!', 'info');
+        }, 1500);
+      } catch (error) {
+        console.error("Error sharing code:", error);
+        showNotification('Error sharing code. Please try again.', 'error');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    function highlightEmptyFields() {
+      const fields = [titleInput, codeInput, languageSelect];
+      fields.forEach(field => {
+        if (!field.value.trim()) {
+          field.classList.add('error');
+          setTimeout(() => field.classList.remove('error'), 2000);
+        }
+      });
+    }
+
+    // Real-time Data
+    function setupRealtimeListener() {
+      showLoading(true);
+      
+      const q = query(collection(db, "codes"), orderBy("createdAt", "desc"));
+      
+      onSnapshot(q, (snapshot) => {
+        allCodes = [];
+        snapshot.forEach((docSnap) => {
+          allCodes.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        
+        renderCodes(allCodes);
+        showLoading(false);
+        updateStats();
+        
+        // Show helpful tip if no codes
+        if (allCodes.length === 0) {
+          setTimeout(() => {
+            showNotification('No codes yet! Be the first to share some code.', 'info');
+          }, 1000);
+        }
+      }, (error) => {
+        console.error("Error loading codes:", error);
+        showNotification('Error loading codes', 'error');
+        showLoading(false);
+      });
+    }
+
+    // Real-time Comments Listener
+    function setupRealtimeCommentsListener() {
+      onSnapshot(collection(db, "comments"), (snapshot) => {
+        // Reset comments object
+        comments = {};
+        
+        snapshot.forEach((doc) => {
+          const comment = doc.data();
+          const codeId = comment.codeId;
+          
+          if (!comments[codeId]) {
+            comments[codeId] = [];
+          }
+          
+          comments[codeId].push({
+            id: doc.id,
+            ...comment
+          });
+        });
+        
+        // Sort comments by date for each code
+        Object.keys(comments).forEach(codeId => {
+          comments[codeId].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
+        
+        // Update UI with comment counts
+        updateCommentCounts();
+        
+        // Update any open comment sections
+        updateOpenCommentSections();
+      }, (error) => {
+        console.error("Error loading comments:", error);
+      });
+    }
+
+    // Update open comment sections with new data
+    function updateOpenCommentSections() {
+      document.querySelectorAll('.comments-section').forEach(section => {
+        if (section.style.display === 'block') {
+          const codeId = section.closest('.code-card').dataset.id;
+          renderComments(codeId);
+        }
+      });
+    }
+
+    // Voting System
+    async function handleVote(codeId, voteType) {
+      if (!currentUser) {
+        showNotification('Please sign in to vote', 'warning');
+        openAuthModal();
+        return;
+      }
+
+      // Check if vote is already in progress for this post
+      if (votingInProgress.has(codeId)) {
+        showNotification('Please wait, your vote is being processed...', 'warning');
+        return;
+      }
+
+      // Add to voting in progress set
+      votingInProgress.add(codeId);
+      
+      // Show loading state for the specific vote button
+      const voteBtn = document.querySelector(`.code-card[data-id="${codeId}"] .${voteType}-btn`);
+      if (voteBtn) {
+        const originalHTML = voteBtn.innerHTML;
+        voteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        voteBtn.disabled = true;
+        
+        // Also disable the other vote button
+        const otherVoteType = voteType === 'like' ? 'dislike' : 'like';
+        const otherVoteBtn = document.querySelector(`.code-card[data-id="${codeId}"] .${otherVoteType}-btn`);
+        if (otherVoteBtn) {
+          otherVoteBtn.disabled = true;
+        }
+        
+        try {
+          if (await hasUserVoted(codeId)) {
+            showNotification('You have already voted on this code!', 'warning');
+            return;
+          }
+
+          const ref = doc(db, "codes", codeId);
+          await updateDoc(ref, { 
+            [voteType + 's']: increment(1),
+            lastModified: new Date().toISOString()
+          });
+          await recordVote(codeId, voteType);
+          showNotification(`Thanks for your ${voteType}!`, 'success');
+        } catch (error) {
+          console.error('Error voting:', error);
+          showNotification('Error submitting vote', 'error');
+        } finally {
+          // Remove from voting in progress set
+          votingInProgress.delete(codeId);
+          
+          // Restore original button state
+          voteBtn.innerHTML = originalHTML;
+          voteBtn.disabled = false;
+          
+          // Re-enable the other vote button
+          if (otherVoteBtn) {
+            otherVoteBtn.disabled = false;
+          }
+        }
+      }
+    }
+
+    async function hasUserVoted(postId) {
+      const voteDoc = await getDoc(doc(db, "votes", `${postId}_${currentUser.id}`));
+      return voteDoc.exists();
+    }
+
+    async function recordVote(postId, voteType) {
+      await setDoc(doc(db, "votes", `${postId}_${currentUser.id}`), {
+        postId: postId,
+        userId: currentUser.id,
+        voteType: voteType,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Delete Functionality
+    async function deletePost(postId) {
+      if (!confirm("Are you sure you want to delete this code? This action cannot be undone.")) {
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "codes", postId));
+        showNotification('Code deleted successfully!', 'success');
+        updateStats();
+      } catch (error) {
+        console.error("Error deleting post:", error);
+        showNotification('Error deleting code', 'error');
+      }
+    }
+
+    // View Counter
+    async function incrementViews(codeId) {
+      try {
+        const ref = doc(db, "codes", codeId);
+        await updateDoc(ref, { 
+          views: increment(1)
+        });
+      } catch (error) {
+        console.error('Error updating views:', error);
+      }
+    }
+
+    // Filtering & Sorting
+    function filterCodes() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const languageFilter = filterLanguage.value;
+      
+      let filtered = allCodes.filter(code => {
+        const matchesSearch = !searchTerm || 
+          code.title.toLowerCase().includes(searchTerm) ||
+          code.description.toLowerCase().includes(searchTerm) ||
+          code.code.toLowerCase().includes(searchTerm) ||
+          code.userName.toLowerCase().includes(searchTerm);
+        
+        const matchesLanguage = !languageFilter || code.language === languageFilter;
+        
+        return matchesSearch && matchesLanguage;
+      });
+      
+      sortCodes(filtered);
+      
+      // Show results count
+      if (searchTerm || languageFilter) {
+        const resultsText = filtered.length === 1 ? 'result' : 'results';
+        showNotification(`Found ${filtered.length} ${resultsText}`, 'info', 2000);
+      }
+    }
+
+    function sortCodes(filteredCodes = allCodes) {
+      const sortBy = sortSelect.value;
+      let sorted = [...filteredCodes];
+      
+      switch(sortBy) {
+        case 'newest':
+          sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          break;
+        case 'oldest':
+          sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          break;
+        case 'popular':
+          sorted.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+          break;
+        case 'most_liked':
+          sorted.sort((a, b) => b.likes - a.likes);
+          break;
+        case 'most_viewed':
+          sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+          break;
+      }
+      
+      renderCodes(sorted);
+    }
+
+    // Comment System
+    async function loadAllComments() {
+      comments = {};
+      
+      try {
+        const commentsSnapshot = await getDocs(collection(db, "comments"));
+        commentsSnapshot.forEach((doc) => {
+          const comment = doc.data();
+          const codeId = comment.codeId;
+          
+          if (!comments[codeId]) {
+            comments[codeId] = [];
+          }
+          
+          comments[codeId].push({
+            id: doc.id,
+            ...comment
+          });
+        });
+        
+        // Sort comments by date for each code
+        Object.keys(comments).forEach(codeId => {
+          comments[codeId].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        });
+        
+        // Update UI with comment counts
+        updateCommentCounts();
+      } catch (error) {
+        console.error("Error loading comments:", error);
+      }
+    }
+
+    async function loadCommentsForCode(codeId) {
+      try {
+        const q = query(collection(db, "comments"), where("codeId", "==", codeId), orderBy("createdAt", "asc"));
+        const querySnapshot = await getDocs(q);
+        
+        comments[codeId] = [];
+        querySnapshot.forEach((doc) => {
+          comments[codeId].push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        return comments[codeId];
+      } catch (error) {
+        console.error("Error loading comments for code:", error);
+        return [];
+      }
+    }
+
+    async function addComment(codeId, commentText) {
+      if (!currentUser) {
+        showNotification('Please sign in to comment', 'warning');
+        openAuthModal();
+        return false;
+      }
+
+      if (!commentText.trim()) {
+        showNotification('Please enter a comment', 'warning');
+        return false;
+      }
+
+      try {
+        await addDoc(collection(db, "comments"), {
+          codeId: codeId,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          text: commentText.trim(),
+          createdAt: new Date().toISOString()
+        });
+        
+        showNotification('Comment added!', 'success');
+        return true;
+      } catch (error) {
+        console.error("Error adding comment:", error);
+        showNotification('Error adding comment', 'error');
+        return false;
+      }
+    }
+
+    async function deleteComment(commentId, codeId) {
+      if (!confirm("Are you sure you want to delete this comment?")) {
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "comments", commentId));
+        
+        // Remove from local state
+        if (comments[codeId]) {
+          comments[codeId] = comments[codeId].filter(comment => comment.id !== commentId);
+        }
+        
+        showNotification('Comment deleted', 'success');
+        return true;
+      } catch (error) {
+        console.error("Error deleting comment:", error);
+        showNotification('Error deleting comment', 'error');
+        return false;
+      }
+    }
+
+    function updateCommentCounts() {
+      document.querySelectorAll('.code-card').forEach(card => {
+        const codeId = card.dataset.id;
+        const commentCount = comments[codeId] ? comments[codeId].length : 0;
+        const commentBtn = card.querySelector('.comment-btn');
+        
+        if (commentBtn) {
+          const countSpan = commentBtn.querySelector('.comment-count');
+          if (countSpan) {
+            countSpan.textContent = commentCount;
+          } else {
+            commentBtn.innerHTML += `<span class="comment-count">${commentCount}</span>`;
+          }
+        }
+      });
+    }
+
+    function toggleComments(codeId) {
+      if (!currentUser) {
+        showNotification('Please sign in to view comments', 'warning');
+        openAuthModal();
+        return;
+      }
+
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentsSection = card.querySelector('.comments-section');
+      
+      if (commentsSection.style.display === 'block') {
+        commentsSection.style.display = 'none';
+        return;
+      }
+      
+      // Show loading
+      commentsSection.innerHTML = `
+        <div class="comments-loading">
+          <div class="spinner"></div>
+          <span>Loading comments...</span>
+        </div>
+      `;
+      commentsSection.style.display = 'block';
+      
+      // Load comments if not already loaded
+      if (!comments[codeId]) {
+        loadCommentsForCode(codeId).then(() => {
+          renderComments(codeId);
+        });
+      } else {
+        renderComments(codeId);
+      }
+    }
+
+    function renderComments(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentsSection = card.querySelector('.comments-section');
+      const codeComments = comments[codeId] || [];
+      
+      commentsSection.innerHTML = `
+        <div class="comments-header">
+          <h4>Comments (${codeComments.length})</h4>
+        </div>
+        <div class="comments-list">
+          ${codeComments.length > 0 ? 
+            codeComments.map(comment => `
+              <div class="comment" data-id="${comment.id}">
+                <div class="comment-header">
+                  <span class="comment-author">${escapeHtml(comment.userName)}</span>
+                  <span class="comment-date">${formatDate(comment.createdAt)}</span>
+                  ${comment.userId === currentUser.id ? `
+                    <button class="btn-icon delete-comment-btn" onclick="deleteComment('${comment.id}', '${codeId}')" title="Delete comment">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  ` : ''}
+                </div>
+                <div class="comment-text">${escapeHtml(comment.text)}</div>
+              </div>
+            `).join('') : 
+            '<div class="no-comments">No comments yet. Be the first to comment!</div>'
+          }
+        </div>
+        <div class="add-comment">
+          <textarea class="comment-input" placeholder="Add a comment..." rows="2"></textarea>
+          <button class="btn btn-primary btn-sm" onclick="submitComment('${codeId}')">Post Comment</button>
+        </div>
+      `;
+    }
+
+    async function submitComment(codeId) {
+      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
+      const commentInput = card.querySelector('.comment-input');
+      const commentText = commentInput.value;
+      
+      if (!commentText.trim()) {
+        showNotification('Please enter a comment', 'warning');
+        return;
+      }
+      
+      // Show loading state
+      const submitBtn = card.querySelector('.add-comment .btn');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+      submitBtn.disabled = true;
+      
+      try {
+        const success = await addComment(codeId, commentText);
+        if (success) {
+          commentInput.value = '';
+          // The real-time listener will automatically update the comments section
+        }
+      } finally {
+        // Restore button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    }
+
+    // Rendering
+    function renderCodes(codes) {
+      if (codes.length === 0) {
+        codeList.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-search"></i>
+            <h3>No codes found</h3>
+            <p>Try adjusting your search or filters, or <a href="#" onclick="document.getElementById('codeForm').scrollIntoView({behavior:'smooth'})">share the first code</a></p>
+          </div>
+        `;
+        return;
+      }
+
+      codeList.innerHTML = codes.map(code => {
+        const isOwner = currentUser && code.userId === currentUser.id;
+        const netScore = code.likes - code.dislikes;
+        const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
+        const views = code.views || 0;
+        const commentCount = comments[code.id] ? comments[code.id].length : 0;
+        
+        return `
+          <div class="code-card" data-id="${code.id}">
+            <div class="card-header">
+              <div class="code-title-section">
+                <h3 class="code-title">${escapeHtml(code.title)}</h3>
+                <span class="language-tag">${escapeHtml(code.language)}</span>
+              </div>
+              <div class="card-actions">
+                ${isOwner ? `
+                  <button class="btn-icon delete-btn" onclick="deletePost('${code.id}')" title="Delete code">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                ` : ''}
+                <button class="btn-icon copy-btn" onclick="copyCode('${code.id}')" title="Copy code">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+            </div>
+            
+            ${code.description ? `
+              <div class="code-description">
+                ${escapeHtml(code.description)}
+              </div>
+            ` : ''}
+            
+            <div class="code-meta">
+              <span class="author">
+                <i class="fas fa-user"></i>
+                ${escapeHtml(code.userName)}
+              </span>
+              <span class="date">
+                <i class="fas fa-calendar"></i>
+                ${formatDate(code.createdAt)}
+              </span>
+              <span class="views">
+                <i class="fas fa-eye"></i>
+                ${views} view${views !== 1 ? 's' : ''}
+              </span>
+            </div>
+            
+            <pre class="code-block"><code>${escapeHtml(code.code)}</code></pre>
+            
+            <div class="card-footer">
+              <div class="vote-section">
+                <button class="vote-btn like-btn" onclick="handleVote('${code.id}', 'like')" ${!currentUser ? 'disabled' : ''}>
+                  <i class="fas fa-thumbs-up"></i>
+                  <span>${code.likes || 0}</span>
+                </button>
+                <div class="score ${scoreColor}">
+                  ${netScore}
+                </div>
+                <button class="vote-btn dislike-btn" onclick="handleVote('${code.id}', 'dislike')" ${!currentUser ? 'disabled' : ''}>
+                  <i class="fas fa-thumbs-down"></i>
+                  <span>${code.dislikes || 0}</span>
+                </button>
+                <button class="vote-btn comment-btn" onclick="toggleComments('${code.id}')" ${!currentUser ? 'disabled' : ''}>
+                  <i class="fas fa-comment"></i>
+                  <span class="comment-count">${commentCount}</span>
+                </button>
+              </div>
+              <div class="engagement-hint">
+                ${netScore >= 5 ? '🔥 Popular!' : netScore <= -3 ? '💡 Could use improvement' : '💙 Be the first to vote!'}
+              </div>
+            </div>
+            
+            <div class="comments-section" style="display: none;"></div>
+          </div>
+        `;
+      }).join('');
+
+      // Attach view increment on code block click
+      codeList.querySelectorAll('.code-block').forEach(block => {
+        block.addEventListener('click', async () => {
+          const codeId = block.closest('.code-card').dataset.id;
+          await incrementViews(codeId);
+        });
+      });
+    }
+
+    // Utility Functions
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diff = now - date;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      
+      if (days === 0) return 'Today';
+      if (days === 1) return 'Yesterday';
+      if (days < 7) return `${days} days ago`;
+      if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+      return date.toLocaleDateString();
+    }
+
+    async function copyCode(codeId) {
+      const code = allCodes.find(c => c.id === codeId);
+      if (code) {
+        try {
+          await navigator.clipboard.writeText(code.code);
+          showNotification('Code copied to clipboard! 📋', 'success');
+        } catch (err) {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = code.code;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          showNotification('Code copied to clipboard! 📋', 'success');
+        }
+      }
+    }
+
+    function showNotification(message, type = 'info', duration = 5000) {
+      // Remove any existing notifications of the same message
+      const existingNotifications = document.querySelectorAll('.notification');
+      existingNotifications.forEach(notification => {
+        if (notification.textContent.includes(message)) {
+          notification.remove();
+        }
+      });
+      
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <i class="fas fa-${getNotificationIcon(type)}"></i>
+        <span>${message}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      
+      document.getElementById('notifications').appendChild(notification);
+      
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, duration);
+    }
+
+    function getNotificationIcon(type) {
+      const icons = {
+        success: 'check-circle',
+        error: 'exclamation-circle',
+        warning: 'exclamation-triangle',
+        info: 'info-circle'
+      };
+      return icons[type] || 'info-circle';
+    }
+
+    function showLoading(show) {
+      loadingSpinner.style.display = show ? 'flex' : 'none';
+    }
+
+    function updateStats() {
+      const stats = {
+        totalCodes: allCodes.length,
+        totalLikes: allCodes.reduce((sum, code) => sum + (code.likes || 0), 0),
+        totalViews: allCodes.reduce((sum, code) => sum + (code.views || 0), 0),
+        totalComments: Object.values(comments).reduce((sum, codeComments) => sum + codeComments.length, 0)
+      };
+      
+      document.getElementById('totalCodes').textContent = stats.totalCodes;
+      document.getElementById('totalLikes').textContent = stats.totalLikes;
+      document.getElementById('totalViews').textContent = stats.totalViews;
+      document.getElementById('totalComments').textContent = stats.totalComments;
+    }
+
+    function loadStats() {
+      // Initialize with current data
+      updateStats();
+    }
+
+    // Make functions global for onclick handlers
+    window.handleVote = handleVote;
+    window.deletePost = deletePost;
+    window.copyCode = copyCode;
+    window.filterCodes = filterCodes;
+    window.toggleComments = toggleComments;
+    window.submitComment = submitComment;
+    window.deleteComment = deleteComment;
+    window.openAuthModal = openAuthModal;
+    window.closeAuthModal = closeAuthModal;
+
+    // Initialize app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+
   <style>
     :root {
       --primary: #4361ee;
@@ -493,7 +1687,6 @@
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      position: relative;
     }
 
     label {
@@ -527,160 +1720,6 @@
       0%, 100% { transform: translateX(0); }
       25% { transform: translateX(-5px); }
       75% { transform: translateX(5px); }
-    }
-
-    /* Enhanced Search Styles */
-    .search-suggestions {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      margin-top: 0.5rem;
-      box-shadow: var(--shadow);
-      z-index: 1000;
-      max-height: 300px;
-      overflow-y: auto;
-      display: none;
-    }
-
-    .suggestion-item {
-      padding: 0.75rem 1rem;
-      cursor: pointer;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: background-color 0.2s;
-    }
-
-    .suggestion-item:last-child {
-      border-bottom: none;
-    }
-
-    .suggestion-item:hover {
-      background: var(--bg-secondary);
-    }
-
-    .suggestion-type {
-      margin-left: auto;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      opacity: 0.7;
-    }
-
-    /* Advanced Search */
-    .advanced-search-toggle {
-      position: absolute;
-      right: 0.5rem;
-      top: 50%;
-      transform: translateY(-50%);
-    }
-
-    .advanced-search-panel {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-top: 0.5rem;
-      box-shadow: var(--shadow);
-      z-index: 1000;
-      width: 300px;
-      display: none;
-    }
-
-    .advanced-search-panel.active {
-      display: block;
-    }
-
-    .advanced-search-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .advanced-search-header h4 {
-      margin: 0;
-      color: var(--text-primary);
-    }
-
-    .checkbox-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .checkbox-label {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: normal;
-      cursor: pointer;
-    }
-
-    .date-range {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .date-range input {
-      flex: 1;
-    }
-
-    .advanced-search-actions {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 1rem;
-    }
-
-    /* Quick Search Chips */
-    .quick-search-chips {
-      margin-bottom: 1.5rem;
-      padding: 1rem;
-      background: var(--bg-secondary);
-      border-radius: 8px;
-    }
-
-    .chips-header {
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-    }
-
-    .chips-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .search-chip {
-      background: var(--bg-primary);
-      border: 1px solid var(--border-color);
-      padding: 0.4rem 0.8rem;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      color: var(--text-primary);
-    }
-
-    .search-chip:hover {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-      transform: translateY(-1px);
-    }
-
-    /* Search input with icon */
-    .form-group input[type="text"] {
-      padding-right: 2.5rem;
     }
 
     /* Code Form */
@@ -1135,19 +2174,6 @@
         flex-direction: column;
         width: 100%;
       }
-      
-      .advanced-search-panel {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 90%;
-        max-width: 300px;
-      }
-      
-      .chips-list {
-        justify-content: center;
-      }
     }
 
     /* Floating Action Button */
@@ -1375,31 +2401,12 @@
       </div>
     </div>
 
-    <!-- Quick Search Chips -->
-    <div class="quick-search-chips">
-      <div class="chips-header">
-        <span>Quick Search:</span>
-      </div>
-      <div class="chips-list">
-        <button class="search-chip" onclick="quickSearch('JavaScript')">JavaScript</button>
-        <button class="search-chip" onclick="quickSearch('Python')">Python</button>
-        <button class="search-chip" onclick="quickSearch('React')">React</button>
-        <button class="search-chip" onclick="quickSearch('Node.js')">Node.js</button>
-        <button class="search-chip" onclick="quickSearch('CSS')">CSS</button>
-        <button class="search-chip" onclick="quickSearch('HTML')">HTML</button>
-      </div>
-    </div>
-
     <!-- Filters -->
     <div class="filters">
       <div class="filter-row">
         <div class="form-group">
           <label for="searchInput"><i class="fas fa-search"></i> Search Codes</label>
           <input type="text" id="searchInput" placeholder="Search by title, description, code, or author...">
-          <button class="btn-icon advanced-search-toggle" onclick="toggleAdvancedSearch()">
-            <i class="fas fa-sliders-h"></i>
-          </button>
-          <div id="searchSuggestions" class="search-suggestions"></div>
         </div>
         <div class="form-group">
           <label for="filterLanguage"><i class="fas fa-code"></i> Language</label>
@@ -1420,54 +2427,6 @@
         <button class="btn btn-primary" onclick="filterCodes()">
           <i class="fas fa-filter"></i> Apply
         </button>
-      </div>
-    </div>
-
-    <!-- Advanced Search Panel -->
-    <div id="advancedSearchPanel" class="advanced-search-panel">
-      <div class="advanced-search-header">
-        <h4>Advanced Search</h4>
-        <button class="btn-icon close-advanced" onclick="toggleAdvancedSearch()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="advanced-search-filters">
-        <div class="form-group">
-          <label>Search In:</label>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="searchTitles" checked> Titles
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="searchDescriptions" checked> Descriptions
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="searchCode" checked> Code Content
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="searchAuthors" checked> Authors
-            </label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="searchDateFrom">Date Range:</label>
-          <div class="date-range">
-            <input type="date" id="searchDateFrom" placeholder="From">
-            <input type="date" id="searchDateTo" placeholder="To">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="minLikes">Minimum Likes:</label>
-          <input type="number" id="minLikes" min="0" placeholder="0">
-        </div>
-        <div class="advanced-search-actions">
-          <button class="btn btn-primary btn-sm" onclick="applyAdvancedSearch()">
-            Apply Filters
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="resetAdvancedSearch()">
-            Reset
-          </button>
-        </div>
       </div>
     </div>
 
@@ -1525,1119 +2484,13 @@
   </div>
 
   <script>
-    // Mock data for demonstration
-    const mockCodes = [
-      {
-        id: '1',
-        title: 'React Counter Component',
-        code: 'function Counter() {\n  const [count, setCount] = useState(0);\n  \n  return (\n    <div>\n      <p>Count: {count}</p>\n      <button onClick={() => setCount(count + 1)}>\n        Increment\n      </button>\n    </div>\n  );\n}',
-        language: 'JavaScript',
-        description: 'A simple React counter component using hooks',
-        likes: 15,
-        dislikes: 2,
-        views: 120,
-        userId: 'user1',
-        userName: 'ReactDev',
-        createdAt: '2023-10-15T10:30:00Z'
-      },
-      {
-        id: '2',
-        title: 'Python Fibonacci Sequence',
-        code: 'def fibonacci(n):\n    if n <= 1:\n        return n\n    else:\n        return fibonacci(n-1) + fibonacci(n-2)\n\n# Print first 10 Fibonacci numbers\nfor i in range(10):\n    print(fibonacci(i))',
-        language: 'Python',
-        description: 'Recursive implementation of Fibonacci sequence',
-        likes: 8,
-        dislikes: 1,
-        views: 85,
-        userId: 'user2',
-        userName: 'PythonMaster',
-        createdAt: '2023-10-10T14:20:00Z'
-      },
-      {
-        id: '3',
-        title: 'CSS Grid Layout Example',
-        code: '.container {\n  display: grid;\n  grid-template-columns: repeat(3, 1fr);\n  gap: 20px;\n  padding: 20px;\n}\n\n.item {\n  background: #f0f0f0;\n  padding: 20px;\n  border-radius: 8px;\n}',
-        language: 'CSS',
-        description: 'Responsive grid layout using CSS Grid',
-        likes: 12,
-        dislikes: 0,
-        views: 95,
-        userId: 'user3',
-        userName: 'CSSWizard',
-        createdAt: '2023-10-05T09:15:00Z'
-      },
-      {
-        id: '4',
-        title: 'Node.js Express Server',
-        code: 'const express = require(\'express\');\nconst app = express();\nconst port = 3000;\n\napp.get(\'/\', (req, res) => {\n  res.send(\'Hello World!\');\n});\n\napp.listen(port, () => {\n  console.log(`Server running at http://localhost:${port}`);\n});',
-        language: 'JavaScript',
-        description: 'Basic Express server setup',
-        likes: 10,
-        dislikes: 1,
-        views: 110,
-        userId: 'user4',
-        userName: 'NodeNinja',
-        createdAt: '2023-10-01T16:45:00Z'
-      },
-      {
-        id: '5',
-        title: 'Python Data Analysis with Pandas',
-        code: 'import pandas as pd\nimport numpy as np\n\n# Create sample data\ndata = {\n    \'Name\': [\'Alice\', \'Bob\', \'Charlie\'],\n    \'Age\': [25, 30, 35],\n    \'Salary\': [50000, 60000, 70000]\n}\n\ndf = pd.DataFrame(data)\nprint(df.describe())',
-        language: 'Python',
-        description: 'Basic data analysis using Pandas library',
-        likes: 7,
-        dislikes: 0,
-        views: 75,
-        userId: 'user5',
-        userName: 'DataScientist',
-        createdAt: '2023-09-28T11:20:00Z'
-      }
-    ];
-
-    // DOM Elements
-    const form = document.getElementById('codeForm');
-    const titleInput = document.getElementById('title');
-    const codeInput = document.getElementById('code');
-    const languageSelect = document.getElementById('language');
-    const descriptionInput = document.getElementById('description');
-    const codeList = document.getElementById('codeList');
-    const searchInput = document.getElementById('searchInput');
-    const filterLanguage = document.getElementById('filterLanguage');
-    const sortSelect = document.getElementById('sortSelect');
-    const themeToggle = document.getElementById('themeToggle');
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    const userNameInput = document.getElementById('userName');
-    const quickActions = document.getElementById('quickActions');
-    const authModal = document.getElementById('authModal');
-    const loginForm = document.getElementById('loginForm');
-    const signupForm = document.getElementById('signupForm');
-    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
-    const showSignupLink = document.getElementById('showSignup');
-    const showLoginLink = document.getElementById('showLogin');
-    const userProfile = document.getElementById('userProfile');
-    const userAvatar = document.getElementById('userAvatar');
-    const userNameDisplay = document.getElementById('userNameDisplay');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const authButtons = document.getElementById('authButtons');
-
-    // State
-    let currentUser = null;
-    let allCodes = [...mockCodes];
-    let comments = {};
-    let votingInProgress = new Set();
-
-    // Initialize App
-    function initApp() {
-      setupEventListeners();
-      loadLanguages();
-      loadStats();
-      setupLanguageDetection();
-      setupAuthListener();
-      setupEnhancedSearch();
-      renderCodes(allCodes);
-    }
-
-    // Enhanced Search System
-    function setupEnhancedSearch() {
-      // Add search suggestions
-      searchInput.addEventListener('focus', showSearchSuggestions);
-      searchInput.addEventListener('input', debounce(updateSearchSuggestions, 200));
-      
-      // Add keyboard shortcuts
-      document.addEventListener('keydown', handleSearchShortcuts);
-      
-      // Initialize search history
-      loadSearchHistory();
-    }
-
-    // Search suggestions
-    function showSearchSuggestions() {
-      if (!document.getElementById('searchSuggestions')) {
-        const suggestions = document.createElement('div');
-        suggestions.id = 'searchSuggestions';
-        suggestions.className = 'search-suggestions';
-        searchInput.parentNode.appendChild(suggestions);
-      }
-      updateSearchSuggestions();
-    }
-
-    function updateSearchSuggestions() {
-      const searchTerm = searchInput.value.toLowerCase();
-      const suggestions = document.getElementById('searchSuggestions');
-      
-      if (!searchTerm) {
-        suggestions.style.display = 'none';
-        return;
-      }
-      
-      // Get unique suggestions from existing codes
-      const allTitles = [...new Set(allCodes.map(code => code.title))];
-      const allLanguages = [...new Set(allCodes.map(code => code.language))];
-      const allAuthors = [...new Set(allCodes.map(code => code.userName))];
-      
-      const titleMatches = allTitles.filter(title => 
-        title.toLowerCase().includes(searchTerm)
-      ).slice(0, 3);
-      
-      const languageMatches = allLanguages.filter(lang => 
-        lang.toLowerCase().includes(searchTerm)
-      ).slice(0, 2);
-      
-      const authorMatches = allAuthors.filter(author => 
-        author.toLowerCase().includes(searchTerm)
-      ).slice(0, 2);
-      
-      const popularSearches = getPopularSearches().filter(term =>
-        term.toLowerCase().includes(searchTerm)
-      ).slice(0, 2);
-      
-      const suggestionsHTML = [
-        ...titleMatches.map(title => 
-          `<div class="suggestion-item" onclick="fillSearch('${escapeHtml(title)}', 'title')">
-            <i class="fas fa-code"></i> "${title}"
-            <span class="suggestion-type">in titles</span>
-          </div>`
-        ),
-        ...languageMatches.map(lang => 
-          `<div class="suggestion-item" onclick="fillSearch('${escapeHtml(lang)}', 'language')">
-            <i class="fas fa-tag"></i> ${lang}
-            <span class="suggestion-type">language</span>
-          </div>`
-        ),
-        ...authorMatches.map(author => 
-          `<div class="suggestion-item" onclick="fillSearch('${escapeHtml(author)}', 'author')">
-            <i class="fas fa-user"></i> ${author}
-            <span class="suggestion-type">author</span>
-          </div>`
-        ),
-        ...popularSearches.map(term => 
-          `<div class="suggestion-item" onclick="fillSearch('${escapeHtml(term)}', 'popular')">
-            <i class="fas fa-fire"></i> ${term}
-            <span class="suggestion-type">popular</span>
-          </div>`
-        )
-      ].join('');
-      
-      if (suggestionsHTML) {
-        suggestions.innerHTML = suggestionsHTML;
-        suggestions.style.display = 'block';
-      } else {
-        suggestions.style.display = 'none';
-      }
-    }
-
-    function fillSearch(value, type) {
-      searchInput.value = value;
-      document.getElementById('searchSuggestions').style.display = 'none';
-      filterCodes();
-      
-      // Add to search history
-      addToSearchHistory(value, type);
-    }
-
-    // Search history management
-    function loadSearchHistory() {
-      const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-      return history;
-    }
-
-    function addToSearchHistory(term, type) {
-      const history = loadSearchHistory();
-      const existingIndex = history.findIndex(item => item.term === term);
-      
-      if (existingIndex !== -1) {
-        history.splice(existingIndex, 1);
-      }
-      
-      history.unshift({
-        term,
-        type,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Keep only last 10 searches
-      const limitedHistory = history.slice(0, 10);
-      localStorage.setItem('searchHistory', JSON.stringify(limitedHistory));
-    }
-
-    function getPopularSearches() {
-      const history = loadSearchHistory();
-      const termCounts = {};
-      
-      history.forEach(item => {
-        termCounts[item.term] = (termCounts[item.term] || 0) + 1;
-      });
-      
-      return Object.entries(termCounts)
-        .sort(([,a], [,b]) => b - a)
-        .map(([term]) => term)
-        .slice(0, 5);
-    }
-
-    function toggleAdvancedSearch() {
-      const panel = document.getElementById('advancedSearchPanel');
-      panel.classList.toggle('active');
-    }
-
-    function applyAdvancedSearch() {
-      filterCodes();
-      toggleAdvancedSearch();
-    }
-
-    function resetAdvancedSearch() {
-      document.getElementById('searchTitles').checked = true;
-      document.getElementById('searchDescriptions').checked = true;
-      document.getElementById('searchCode').checked = true;
-      document.getElementById('searchAuthors').checked = true;
-      document.getElementById('searchDateFrom').value = '';
-      document.getElementById('searchDateTo').value = '';
-      document.getElementById('minLikes').value = '';
-      filterCodes();
-    }
-
-    // Enhanced filterCodes function with advanced search
-    function filterCodes() {
-      const searchTerm = searchInput.value.toLowerCase();
-      const languageFilter = filterLanguage.value;
-      
-      // Advanced search options
-      const searchTitles = document.getElementById('searchTitles')?.checked ?? true;
-      const searchDescriptions = document.getElementById('searchDescriptions')?.checked ?? true;
-      const searchCode = document.getElementById('searchCode')?.checked ?? true;
-      const searchAuthors = document.getElementById('searchAuthors')?.checked ?? true;
-      const dateFrom = document.getElementById('searchDateFrom')?.value;
-      const dateTo = document.getElementById('searchDateTo')?.value;
-      const minLikes = parseInt(document.getElementById('minLikes')?.value) || 0;
-      
-      let filtered = allCodes.filter(code => {
-        // Text search
-        let matchesSearch = !searchTerm;
-        if (searchTerm && !matchesSearch) {
-          matchesSearch = (
-            (searchTitles && code.title.toLowerCase().includes(searchTerm)) ||
-            (searchDescriptions && code.description.toLowerCase().includes(searchTerm)) ||
-            (searchCode && code.code.toLowerCase().includes(searchTerm)) ||
-            (searchAuthors && code.userName.toLowerCase().includes(searchTerm))
-          );
-        }
-        
-        // Language filter
-        const matchesLanguage = !languageFilter || code.language === languageFilter;
-        
-        // Date range filter
-        const codeDate = new Date(code.createdAt);
-        const fromDate = dateFrom ? new Date(dateFrom) : null;
-        const toDate = dateTo ? new Date(dateTo) : null;
-        
-        const matchesDate = (!fromDate || codeDate >= fromDate) && 
-                           (!toDate || codeDate <= toDate);
-        
-        // Minimum likes filter
-        const matchesLikes = (code.likes || 0) >= minLikes;
-        
-        return matchesSearch && matchesLanguage && matchesDate && matchesLikes;
-      });
-      
-      sortCodes(filtered);
-      
-      // Show search results summary
-      showSearchResultsSummary(filtered, searchTerm, languageFilter);
-    }
-
-    function showSearchResultsSummary(filtered, searchTerm, languageFilter) {
-      let summary = '';
-      
-      if (searchTerm || languageFilter) {
-        summary = `Found ${filtered.length} ${filtered.length === 1 ? 'result' : 'results'}`;
-        
-        if (searchTerm) {
-          summary += ` for "${searchTerm}"`;
-        }
-        
-        if (languageFilter) {
-          summary += ` in ${languageFilter}`;
-        }
-        
-        showNotification(summary, 'info', 3000);
-      }
-    }
-
-    // Keyboard shortcuts for search
-    function handleSearchShortcuts(e) {
-      // Ctrl+K or / to focus search
-      if ((e.ctrlKey && e.key === 'k') || e.key === '/') {
-        e.preventDefault();
-        searchInput.focus();
-      }
-      
-      // Escape to clear search
-      if (e.key === 'Escape' && document.activeElement === searchInput) {
-        searchInput.value = '';
-        filterCodes();
-      }
-    }
-
-    function quickSearch(term) {
-      searchInput.value = term;
-      filterCodes();
-      showNotification(`Searching for: ${term}`, 'info', 2000);
-    }
-
-    // Auth Management
-    function setupAuthListener() {
-      // Check if user is already logged in
-      const savedUser = localStorage.getItem('currentUser');
-      if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        updateUIForLoggedInUser();
-      } else {
-        // For demo purposes, show auth buttons
-        userProfile.style.display = 'none';
-        authButtons.style.display = 'flex';
-      }
-    }
-
-    function updateUIForLoggedInUser() {
-      userProfile.style.display = 'flex';
-      authButtons.style.display = 'none';
-      userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
-      userNameDisplay.textContent = currentUser.name;
-      userNameInput.value = currentUser.name;
-      
-      applyTheme(currentUser.theme || 'light');
-      showNotification(`Welcome back, ${currentUser.name}!`, 'success');
-    }
-
-    function openAuthModal() {
-      authModal.style.display = 'flex';
-      showLoginForm();
-    }
-
-    function closeAuthModal() {
-      authModal.style.display = 'none';
-    }
-
-    function showLoginForm() {
-      loginForm.style.display = 'block';
-      signupForm.style.display = 'none';
-      forgotPasswordForm.style.display = 'none';
-    }
-
-    function showSignupForm() {
-      loginForm.style.display = 'none';
-      signupForm.style.display = 'block';
-      forgotPasswordForm.style.display = 'none';
-    }
-
-    function showForgotPasswordForm() {
-      loginForm.style.display = 'none';
-      signupForm.style.display = 'none';
-      forgotPasswordForm.style.display = 'block';
-    }
-
-    function handleLogin(e) {
-      e.preventDefault();
-      
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      
-      if (!email || !password) {
-        showNotification('Please fill in all fields', 'error');
-        return;
-      }
-      
-      // For demo purposes, create a user
-      currentUser = {
-        id: 'user_' + Date.now(),
-        name: email.split('@')[0],
-        email: email,
-        theme: localStorage.getItem('theme') || 'light'
-      };
-      
-      // Save to localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      
-      updateUIForLoggedInUser();
-      showNotification('Signed in successfully!', 'success');
-      closeAuthModal();
-      loginForm.reset();
-    }
-
-    function handleSignup(e) {
-      e.preventDefault();
-      
-      const name = document.getElementById('signupName').value.trim();
-      const email = document.getElementById('signupEmail').value.trim();
-      const password = document.getElementById('signupPassword').value;
-      const confirmPassword = document.getElementById('signupConfirmPassword').value;
-      
-      if (!name || !email || !password) {
-        showNotification('Please fill in all fields', 'error');
-        return;
-      }
-      
-      if (password !== confirmPassword) {
-        showNotification('Passwords do not match', 'error');
-        return;
-      }
-      
-      if (password.length < 6) {
-        showNotification('Password must be at least 6 characters', 'error');
-        return;
-      }
-      
-      // For demo purposes, create a user
-      currentUser = {
-        id: 'user_' + Date.now(),
-        name: name,
-        email: email,
-        theme: localStorage.getItem('theme') || 'light'
-      };
-      
-      // Save to localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      
-      updateUIForLoggedInUser();
-      showNotification('Account created successfully!', 'success');
-      closeAuthModal();
-      signupForm.reset();
-    }
-
-    function handleForgotPassword(e) {
-      e.preventDefault();
-      
-      const email = document.getElementById('resetEmail').value.trim();
-      
-      if (!email) {
-        showNotification('Please enter your email address', 'error');
-        return;
-      }
-      
-      showNotification('Password reset email sent! Check your inbox.', 'success');
-      forgotPasswordForm.reset();
-      showLoginForm();
-    }
-
-    function handleLogout() {
-      currentUser = null;
-      localStorage.removeItem('currentUser');
-      
-      userProfile.style.display = 'none';
-      authButtons.style.display = 'flex';
-      
-      showNotification('Signed out successfully', 'info');
-    }
-
-    // Theme Management
-    function applyTheme(theme) {
-      document.body.className = theme + '-theme';
-      themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-      localStorage.setItem('theme', theme);
-      
-      // Update user theme if logged in
-      if (currentUser) {
-        currentUser.theme = theme;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      }
-    }
-
-    function toggleTheme() {
-      const newTheme = document.body.classList.contains('dark-theme') ? 'light' : 'dark';
-      applyTheme(newTheme);
-      showNotification(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode activated`, 'info');
-    }
-
-    // Language Management
-    function loadLanguages() {
-      const languages = [
-        'JavaScript', 'Python', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go',
-        'Swift', 'Kotlin', 'TypeScript', 'HTML', 'CSS', 'SQL', 'Rust', 'Shell',
-        'React', 'Vue', 'Angular', 'Node.js', 'Express', 'Django', 'Flask'
-      ];
-
-      languages.forEach(lang => {
-        const option1 = document.createElement('option');
-        option1.value = lang;
-        option1.textContent = lang;
-        languageSelect.appendChild(option1);
-
-        const option2 = document.createElement('option');
-        option2.value = lang;
-        option2.textContent = lang;
-        filterLanguage.appendChild(option2);
-      });
-    }
-
-    // Auto-detect programming language from code
-    function setupLanguageDetection() {
-      codeInput.addEventListener('input', function() {
-        const code = this.value;
-        if (code.length > 20) {
-          const detectedLang = detectLanguage(code);
-          if (detectedLang && languageSelect.value === '') {
-            languageSelect.value = detectedLang;
-            showNotification(`We detected ${detectedLang} code! Language auto-selected.`, 'info');
-          }
-        }
-      });
-    }
-
-    function detectLanguage(code) {
-      const patterns = {
-        'JavaScript': /\b(function|const|let|var|=>|console\.log)\b/,
-        'Python': /\b(def|import|from|print|__name__)\b/,
-        'Java': /\b(public|class|static|void|System\.out\.println)\b/,
-        'HTML': /<[^>]+>/,
-        'CSS': /[.#][a-zA-Z][^{]*\{[^}]*\}/,
-        'PHP': /<\?php|\$[a-zA-Z_]/,
-        'SQL': /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE)\b/i
-      };
-
-      for (const [lang, pattern] of Object.entries(patterns)) {
-        if (pattern.test(code)) {
-          return lang;
-        }
-      }
-      return null;
-    }
-
-    // Event Listeners
-    function setupEventListeners() {
-      form.addEventListener('submit', handleSubmit);
-      searchInput.addEventListener('input', debounce(filterCodes, 300));
-      filterLanguage.addEventListener('change', filterCodes);
-      sortSelect.addEventListener('change', sortCodes);
-      themeToggle.addEventListener('click', toggleTheme);
-      userNameInput.addEventListener('change', saveUserProfile);
-      
-      // Auth event listeners
-      loginForm.addEventListener('submit', handleLogin);
-      signupForm.addEventListener('submit', handleSignup);
-      forgotPasswordForm.addEventListener('submit', handleForgotPassword);
-      showSignupLink.addEventListener('click', showSignupForm);
-      showLoginLink.addEventListener('click', showLoginForm);
-      document.getElementById('showLoginFromForgot').addEventListener('click', showLoginForm);
-      document.getElementById('forgotPasswordLink').addEventListener('click', showForgotPasswordForm);
-      logoutBtn.addEventListener('click', handleLogout);
-      document.getElementById('openAuthModal').addEventListener('click', openAuthModal);
+    // Add event listener for signup button in header
+    document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('openAuthModalSignup').addEventListener('click', function() {
         openAuthModal();
         showSignupForm();
       });
-      authModal.addEventListener('click', (e) => {
-        if (e.target === authModal) {
-          closeAuthModal();
-        }
-      });
-      
-      // Quick actions
-      document.getElementById('quickShare').addEventListener('click', () => {
-        if (!currentUser) {
-          showNotification('Please sign in to share code', 'warning');
-          openAuthModal();
-          return;
-        }
-        document.getElementById('codeForm').scrollIntoView({ behavior: 'smooth' });
-        titleInput.focus();
-      });
-      
-      document.getElementById('quickDiscover').addEventListener('click', () => {
-        document.getElementById('codeList').scrollIntoView({ behavior: 'smooth' });
-      });
-      
-      // Enhanced search events
-      document.addEventListener('click', (e) => {
-        // Close suggestions when clicking outside
-        if (!e.target.closest('.search-suggestions') && !e.target.closest('#searchInput')) {
-          const suggestions = document.getElementById('searchSuggestions');
-          if (suggestions) suggestions.style.display = 'none';
-        }
-        
-        // Close advanced search when clicking outside
-        if (!e.target.closest('.advanced-search-panel') && !e.target.closest('.advanced-search-toggle')) {
-          const panel = document.getElementById('advancedSearchPanel');
-          if (panel) panel.classList.remove('active');
-        }
-      });
-    }
-
-    // Debounce search for performance
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    }
-
-    // Code Submission
-    function handleSubmit(e) {
-      e.preventDefault();
-      
-      if (!currentUser) {
-        showNotification('Please sign in to share code', 'warning');
-        openAuthModal();
-        return;
-      }
-      
-      const title = titleInput.value.trim();
-      const code = codeInput.value.trim();
-      const language = languageSelect.value;
-      const description = descriptionInput.value.trim();
-
-      if (!title || !code || !language) {
-        showNotification('Please fill in all required fields', 'error');
-        highlightEmptyFields();
-        return;
-      }
-
-      const submitBtn = form.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sharing...';
-      submitBtn.disabled = true;
-
-      try {
-        // Create new code object
-        const newCode = {
-          id: 'code_' + Date.now(),
-          title,
-          code,
-          language,
-          description,
-          likes: 0,
-          dislikes: 0,
-          views: 0,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          createdAt: new Date().toISOString()
-        };
-
-        // Add to the beginning of the array
-        allCodes.unshift(newCode);
-
-        showNotification('Code shared successfully! 🎉', 'success');
-        form.reset();
-        updateStats();
-        renderCodes(allCodes);
-        
-        // Show quick action to view their code
-        setTimeout(() => {
-          showNotification('Scroll down to see your code in the feed!', 'info');
-        }, 1500);
-      } catch (error) {
-        console.error("Error sharing code:", error);
-        showNotification('Error sharing code. Please try again.', 'error');
-      } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-      }
-    }
-
-    function highlightEmptyFields() {
-      const fields = [titleInput, codeInput, languageSelect];
-      fields.forEach(field => {
-        if (!field.value.trim()) {
-          field.classList.add('error');
-          setTimeout(() => field.classList.remove('error'), 2000);
-        }
-      });
-    }
-
-    // Filtering & Sorting
-    function sortCodes(filteredCodes = allCodes) {
-      const sortBy = sortSelect.value;
-      let sorted = [...filteredCodes];
-      
-      switch(sortBy) {
-        case 'newest':
-          sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          break;
-        case 'oldest':
-          sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-          break;
-        case 'popular':
-          sorted.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
-          break;
-        case 'most_liked':
-          sorted.sort((a, b) => b.likes - a.likes);
-          break;
-        case 'most_viewed':
-          sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
-          break;
-      }
-      
-      renderCodes(sorted);
-    }
-
-    // Voting System
-    function handleVote(codeId, voteType) {
-      if (!currentUser) {
-        showNotification('Please sign in to vote', 'warning');
-        openAuthModal();
-        return;
-      }
-
-      const code = allCodes.find(c => c.id === codeId);
-      if (!code) return;
-
-      if (votingInProgress.has(codeId)) {
-        showNotification('Please wait, your vote is being processed...', 'warning');
-        return;
-      }
-
-      votingInProgress.add(codeId);
-      
-      const voteBtn = document.querySelector(`.code-card[data-id="${codeId}"] .${voteType}-btn`);
-      if (voteBtn) {
-        const originalHTML = voteBtn.innerHTML;
-        voteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        voteBtn.disabled = true;
-        
-        const otherVoteType = voteType === 'like' ? 'dislike' : 'like';
-        const otherVoteBtn = document.querySelector(`.code-card[data-id="${codeId}"] .${otherVoteType}-btn`);
-        if (otherVoteBtn) {
-          otherVoteBtn.disabled = true;
-        }
-        
-        try {
-          // Update the code object
-          code[voteType + 's'] = (code[voteType + 's'] || 0) + 1;
-          
-          showNotification(`Thanks for your ${voteType}!`, 'success');
-          renderCodes(allCodes);
-          updateStats();
-        } catch (error) {
-          console.error('Error voting:', error);
-          showNotification('Error submitting vote', 'error');
-        } finally {
-          votingInProgress.delete(codeId);
-          
-          voteBtn.innerHTML = originalHTML;
-          voteBtn.disabled = false;
-          
-          if (otherVoteBtn) {
-            otherVoteBtn.disabled = false;
-          }
-        }
-      }
-    }
-
-    // Delete Functionality
-    function deletePost(postId) {
-      if (!confirm("Are you sure you want to delete this code? This action cannot be undone.")) {
-        return;
-      }
-
-      try {
-        allCodes = allCodes.filter(code => code.id !== postId);
-        showNotification('Code deleted successfully!', 'success');
-        updateStats();
-        renderCodes(allCodes);
-      } catch (error) {
-        console.error("Error deleting post:", error);
-        showNotification('Error deleting code', 'error');
-      }
-    }
-
-    // View Counter
-    function incrementViews(codeId) {
-      const code = allCodes.find(c => c.id === codeId);
-      if (code) {
-        code.views = (code.views || 0) + 1;
-        updateStats();
-      }
-    }
-
-    // Rendering
-    function renderCodes(codes) {
-      if (codes.length === 0) {
-        codeList.innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-search"></i>
-            <h3>No codes found</h3>
-            <p>Try adjusting your search or filters, or <a href="#" onclick="document.getElementById('codeForm').scrollIntoView({behavior:'smooth'})">share the first code</a></p>
-          </div>
-        `;
-        return;
-      }
-
-      codeList.innerHTML = codes.map(code => {
-        const isOwner = currentUser && code.userId === currentUser.id;
-        const netScore = code.likes - code.dislikes;
-        const scoreColor = netScore > 0 ? 'positive' : netScore < 0 ? 'negative' : 'neutral';
-        const views = code.views || 0;
-        const commentCount = comments[code.id] ? comments[code.id].length : 0;
-        
-        return `
-          <div class="code-card" data-id="${code.id}">
-            <div class="card-header">
-              <div class="code-title-section">
-                <h3 class="code-title">${escapeHtml(code.title)}</h3>
-                <span class="language-tag">${escapeHtml(code.language)}</span>
-              </div>
-              <div class="card-actions">
-                ${isOwner ? `
-                  <button class="btn-icon delete-btn" onclick="deletePost('${code.id}')" title="Delete code">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                ` : ''}
-                <button class="btn-icon copy-btn" onclick="copyCode('${code.id}')" title="Copy code">
-                  <i class="fas fa-copy"></i>
-                </button>
-              </div>
-            </div>
-            
-            ${code.description ? `
-              <div class="code-description">
-                ${escapeHtml(code.description)}
-              </div>
-            ` : ''}
-            
-            <div class="code-meta">
-              <span class="author">
-                <i class="fas fa-user"></i>
-                ${escapeHtml(code.userName)}
-              </span>
-              <span class="date">
-                <i class="fas fa-calendar"></i>
-                ${formatDate(code.createdAt)}
-              </span>
-              <span class="views">
-                <i class="fas fa-eye"></i>
-                ${views} view${views !== 1 ? 's' : ''}
-              </span>
-            </div>
-            
-            <pre class="code-block"><code>${escapeHtml(code.code)}</code></pre>
-            
-            <div class="card-footer">
-              <div class="vote-section">
-                <button class="vote-btn like-btn" onclick="handleVote('${code.id}', 'like')">
-                  <i class="fas fa-thumbs-up"></i>
-                  <span>${code.likes || 0}</span>
-                </button>
-                <div class="score ${scoreColor}">
-                  ${netScore}
-                </div>
-                <button class="vote-btn dislike-btn" onclick="handleVote('${code.id}', 'dislike')">
-                  <i class="fas fa-thumbs-down"></i>
-                  <span>${code.dislikes || 0}</span>
-                </button>
-                <button class="vote-btn comment-btn" onclick="toggleComments('${code.id}')">
-                  <i class="fas fa-comment"></i>
-                  <span class="comment-count">${commentCount}</span>
-                </button>
-              </div>
-              <div class="engagement-hint">
-                ${netScore >= 5 ? '🔥 Popular!' : netScore <= -3 ? '💡 Could use improvement' : '💙 Be the first to vote!'}
-              </div>
-            </div>
-            
-            <div class="comments-section" style="display: none;"></div>
-          </div>
-        `;
-      }).join('');
-
-      // Attach view increment on code block click
-      codeList.querySelectorAll('.code-block').forEach(block => {
-        block.addEventListener('click', async () => {
-          const codeId = block.closest('.code-card').dataset.id;
-          await incrementViews(codeId);
-        });
-      });
-    }
-
-    // Utility Functions
-    function escapeHtml(unsafe) {
-      return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    function formatDate(dateString) {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diff = now - date;
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      
-      if (days === 0) return 'Today';
-      if (days === 1) return 'Yesterday';
-      if (days < 7) return `${days} days ago`;
-      if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-      return date.toLocaleDateString();
-    }
-
-    function copyCode(codeId) {
-      const code = allCodes.find(c => c.id === codeId);
-      if (code) {
-        try {
-          navigator.clipboard.writeText(code.code);
-          showNotification('Code copied to clipboard! 📋', 'success');
-        } catch (err) {
-          // Fallback for older browsers
-          const textArea = document.createElement('textarea');
-          textArea.value = code.code;
-          document.body.appendChild(textArea);
-          textArea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textArea);
-          showNotification('Code copied to clipboard! 📋', 'success');
-        }
-      }
-    }
-
-    function showNotification(message, type = 'info', duration = 5000) {
-      // Remove any existing notifications of the same message
-      const existingNotifications = document.querySelectorAll('.notification');
-      existingNotifications.forEach(notification => {
-        if (notification.textContent.includes(message)) {
-          notification.remove();
-        }
-      });
-      
-      const notification = document.createElement('div');
-      notification.className = `notification ${type}`;
-      notification.innerHTML = `
-        <i class="fas fa-${getNotificationIcon(type)}"></i>
-        <span>${message}</span>
-        <button class="notification-close" onclick="this.parentElement.remove()">
-          <i class="fas fa-times"></i>
-        </button>
-      `;
-      
-      document.getElementById('notifications').appendChild(notification);
-      
-      setTimeout(() => {
-        if (notification.parentElement) {
-          notification.remove();
-        }
-      }, duration);
-    }
-
-    function getNotificationIcon(type) {
-      const icons = {
-        success: 'check-circle',
-        error: 'exclamation-circle',
-        warning: 'exclamation-triangle',
-        info: 'info-circle'
-      };
-      return icons[type] || 'info-circle';
-    }
-
-    function showLoading(show) {
-      loadingSpinner.style.display = show ? 'flex' : 'none';
-    }
-
-    function updateStats() {
-      const stats = {
-        totalCodes: allCodes.length,
-        totalLikes: allCodes.reduce((sum, code) => sum + (code.likes || 0), 0),
-        totalViews: allCodes.reduce((sum, code) => sum + (code.views || 0), 0),
-        totalComments: Object.values(comments).reduce((sum, codeComments) => sum + codeComments.length, 0)
-      };
-      
-      document.getElementById('totalCodes').textContent = stats.totalCodes;
-      document.getElementById('totalLikes').textContent = stats.totalLikes;
-      document.getElementById('totalViews').textContent = stats.totalViews;
-      document.getElementById('totalComments').textContent = stats.totalComments;
-    }
-
-    function loadStats() {
-      // Initialize with current data
-      updateStats();
-    }
-
-    function saveUserProfile() {
-      if (!currentUser) {
-        showNotification('Please sign in to update your profile', 'warning');
-        return;
-      }
-      
-      const newName = userNameInput.value.trim();
-      if (!newName) {
-        showNotification('Please enter a name', 'warning');
-        return;
-      }
-      
-      currentUser.name = newName;
-      userNameDisplay.textContent = newName;
-      userAvatar.textContent = newName.charAt(0).toUpperCase();
-      
-      // Update localStorage
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      
-      showNotification('Profile updated!', 'success');
-    }
-
-    function toggleComments(codeId) {
-      if (!currentUser) {
-        showNotification('Please sign in to view comments', 'warning');
-        openAuthModal();
-        return;
-      }
-
-      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
-      const commentsSection = card.querySelector('.comments-section');
-      
-      if (commentsSection.style.display === 'block') {
-        commentsSection.style.display = 'none';
-        return;
-      }
-      
-      commentsSection.innerHTML = `
-        <div class="comments-header">
-          <h4>Comments (0)</h4>
-        </div>
-        <div class="comments-list">
-          <div class="no-comments">No comments yet. Be the first to comment!</div>
-        </div>
-        <div class="add-comment">
-          <textarea class="comment-input" placeholder="Add a comment..." rows="2"></textarea>
-          <button class="btn btn-primary btn-sm" onclick="submitComment('${codeId}')">Post Comment</button>
-        </div>
-      `;
-      commentsSection.style.display = 'block';
-    }
-
-    function submitComment(codeId) {
-      const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
-      const commentInput = card.querySelector('.comment-input');
-      const commentText = commentInput.value;
-      
-      if (!commentText.trim()) {
-        showNotification('Please enter a comment', 'warning');
-        return;
-      }
-      
-      showNotification('Comment added!', 'success');
-      commentInput.value = '';
-    }
-
-    // Make functions global for onclick handlers
-    window.handleVote = handleVote;
-    window.deletePost = deletePost;
-    window.copyCode = copyCode;
-    window.filterCodes = filterCodes;
-    window.toggleComments = toggleComments;
-    window.submitComment = submitComment;
-    window.deleteComment = deleteComment;
-    window.openAuthModal = openAuthModal;
-    window.closeAuthModal = closeAuthModal;
-    window.toggleAdvancedSearch = toggleAdvancedSearch;
-    window.applyAdvancedSearch = applyAdvancedSearch;
-    window.resetAdvancedSearch = resetAdvancedSearch;
-    window.quickSearch = quickSearch;
-    window.fillSearch = fillSearch;
-
-    // Initialize app when DOM is loaded
-    document.addEventListener('DOMContentLoaded', initApp);
+    });
   </script>
 </body>
 </html>
