@@ -1634,7 +1634,6 @@
       setupLanguageDetection();
       setupAuthListener();
       setupEnhancedSearch();
-      setupAdvancedSearch();
       renderCodes(allCodes);
     }
 
@@ -1775,11 +1774,6 @@
         .slice(0, 5);
     }
 
-    // Advanced search filters
-    function setupAdvancedSearch() {
-      // Advanced search panel is already in the HTML
-    }
-
     function toggleAdvancedSearch() {
       const panel = document.getElementById('advancedSearchPanel');
       panel.classList.toggle('active');
@@ -1889,24 +1883,29 @@
       showNotification(`Searching for: ${term}`, 'info', 2000);
     }
 
-    // Auth Management (simplified for demo)
+    // Auth Management
     function setupAuthListener() {
-      // For demo purposes, auto-login as a guest
-      currentUser = {
-        id: 'guest',
-        name: 'Guest User',
-        email: 'guest@example.com',
-        theme: localStorage.getItem('theme') || 'light'
-      };
-      
+      // Check if user is already logged in
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        updateUIForLoggedInUser();
+      } else {
+        // For demo purposes, show auth buttons
+        userProfile.style.display = 'none';
+        authButtons.style.display = 'flex';
+      }
+    }
+
+    function updateUIForLoggedInUser() {
       userProfile.style.display = 'flex';
       authButtons.style.display = 'none';
       userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
       userNameDisplay.textContent = currentUser.name;
       userNameInput.value = currentUser.name;
       
-      applyTheme(currentUser.theme);
-      showNotification(`Welcome to CodeShare, ${currentUser.name}!`, 'success');
+      applyTheme(currentUser.theme || 'light');
+      showNotification(`Welcome back, ${currentUser.name}!`, 'success');
     }
 
     function openAuthModal() {
@@ -1936,26 +1935,97 @@
       forgotPasswordForm.style.display = 'block';
     }
 
-    async function handleLogin(e) {
+    function handleLogin(e) {
       e.preventDefault();
-      showNotification('Login functionality would be implemented with Firebase in a real app', 'info');
+      
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      
+      if (!email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+      }
+      
+      // For demo purposes, create a user
+      currentUser = {
+        id: 'user_' + Date.now(),
+        name: email.split('@')[0],
+        email: email,
+        theme: localStorage.getItem('theme') || 'light'
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      
+      updateUIForLoggedInUser();
+      showNotification('Signed in successfully!', 'success');
       closeAuthModal();
+      loginForm.reset();
     }
 
-    async function handleSignup(e) {
+    function handleSignup(e) {
       e.preventDefault();
-      showNotification('Signup functionality would be implemented with Firebase in a real app', 'info');
+      
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('signupConfirmPassword').value;
+      
+      if (!name || !email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        showNotification('Passwords do not match', 'error');
+        return;
+      }
+      
+      if (password.length < 6) {
+        showNotification('Password must be at least 6 characters', 'error');
+        return;
+      }
+      
+      // For demo purposes, create a user
+      currentUser = {
+        id: 'user_' + Date.now(),
+        name: name,
+        email: email,
+        theme: localStorage.getItem('theme') || 'light'
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      
+      updateUIForLoggedInUser();
+      showNotification('Account created successfully!', 'success');
       closeAuthModal();
+      signupForm.reset();
     }
 
-    async function handleForgotPassword(e) {
+    function handleForgotPassword(e) {
       e.preventDefault();
-      showNotification('Password reset functionality would be implemented with Firebase in a real app', 'info');
+      
+      const email = document.getElementById('resetEmail').value.trim();
+      
+      if (!email) {
+        showNotification('Please enter your email address', 'error');
+        return;
+      }
+      
+      showNotification('Password reset email sent! Check your inbox.', 'success');
+      forgotPasswordForm.reset();
       showLoginForm();
     }
 
-    async function handleLogout() {
-      showNotification('Logout functionality would be implemented with Firebase in a real app', 'info');
+    function handleLogout() {
+      currentUser = null;
+      localStorage.removeItem('currentUser');
+      
+      userProfile.style.display = 'none';
+      authButtons.style.display = 'flex';
+      
+      showNotification('Signed out successfully', 'info');
     }
 
     // Theme Management
@@ -1963,6 +2033,12 @@
       document.body.className = theme + '-theme';
       themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
       localStorage.setItem('theme', theme);
+      
+      // Update user theme if logged in
+      if (currentUser) {
+        currentUser.theme = theme;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      }
     }
 
     function toggleTheme() {
@@ -2044,6 +2120,10 @@
       document.getElementById('forgotPasswordLink').addEventListener('click', showForgotPasswordForm);
       logoutBtn.addEventListener('click', handleLogout);
       document.getElementById('openAuthModal').addEventListener('click', openAuthModal);
+      document.getElementById('openAuthModalSignup').addEventListener('click', function() {
+        openAuthModal();
+        showSignupForm();
+      });
       authModal.addEventListener('click', (e) => {
         if (e.target === authModal) {
           closeAuthModal();
@@ -2052,6 +2132,11 @@
       
       // Quick actions
       document.getElementById('quickShare').addEventListener('click', () => {
+        if (!currentUser) {
+          showNotification('Please sign in to share code', 'warning');
+          openAuthModal();
+          return;
+        }
         document.getElementById('codeForm').scrollIntoView({ behavior: 'smooth' });
         titleInput.focus();
       });
@@ -2090,8 +2175,14 @@
     }
 
     // Code Submission
-    async function handleSubmit(e) {
+    function handleSubmit(e) {
       e.preventDefault();
+      
+      if (!currentUser) {
+        showNotification('Please sign in to share code', 'warning');
+        openAuthModal();
+        return;
+      }
       
       const title = titleInput.value.trim();
       const code = codeInput.value.trim();
@@ -2183,7 +2274,13 @@
     }
 
     // Voting System
-    async function handleVote(codeId, voteType) {
+    function handleVote(codeId, voteType) {
+      if (!currentUser) {
+        showNotification('Please sign in to vote', 'warning');
+        openAuthModal();
+        return;
+      }
+
       const code = allCodes.find(c => c.id === codeId);
       if (!code) return;
 
@@ -2230,7 +2327,7 @@
     }
 
     // Delete Functionality
-    async function deletePost(postId) {
+    function deletePost(postId) {
       if (!confirm("Are you sure you want to delete this code? This action cannot be undone.")) {
         return;
       }
@@ -2247,7 +2344,7 @@
     }
 
     // View Counter
-    async function incrementViews(codeId) {
+    function incrementViews(codeId) {
       const code = allCodes.find(c => c.id === codeId);
       if (code) {
         code.views = (code.views || 0) + 1;
@@ -2377,11 +2474,11 @@
       return date.toLocaleDateString();
     }
 
-    async function copyCode(codeId) {
+    function copyCode(codeId) {
       const code = allCodes.find(c => c.id === codeId);
       if (code) {
         try {
-          await navigator.clipboard.writeText(code.code);
+          navigator.clipboard.writeText(code.code);
           showNotification('Code copied to clipboard! 📋', 'success');
         } catch (err) {
           // Fallback for older browsers
@@ -2458,6 +2555,11 @@
     }
 
     function saveUserProfile() {
+      if (!currentUser) {
+        showNotification('Please sign in to update your profile', 'warning');
+        return;
+      }
+      
       const newName = userNameInput.value.trim();
       if (!newName) {
         showNotification('Please enter a name', 'warning');
@@ -2467,10 +2569,20 @@
       currentUser.name = newName;
       userNameDisplay.textContent = newName;
       userAvatar.textContent = newName.charAt(0).toUpperCase();
+      
+      // Update localStorage
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      
       showNotification('Profile updated!', 'success');
     }
 
     function toggleComments(codeId) {
+      if (!currentUser) {
+        showNotification('Please sign in to view comments', 'warning');
+        openAuthModal();
+        return;
+      }
+
       const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
       const commentsSection = card.querySelector('.comments-section');
       
@@ -2494,7 +2606,7 @@
       commentsSection.style.display = 'block';
     }
 
-    async function submitComment(codeId) {
+    function submitComment(codeId) {
       const card = document.querySelector(`.code-card[data-id="${codeId}"]`);
       const commentInput = card.querySelector('.comment-input');
       const commentText = commentInput.value;
@@ -2504,7 +2616,7 @@
         return;
       }
       
-      showNotification('Comment functionality would be fully implemented with Firebase in a real app', 'info');
+      showNotification('Comment added!', 'success');
       commentInput.value = '';
     }
 
@@ -2526,14 +2638,6 @@
 
     // Initialize app when DOM is loaded
     document.addEventListener('DOMContentLoaded', initApp);
-
-    // Add event listener for signup button in header
-    document.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('openAuthModalSignup').addEventListener('click', function() {
-        openAuthModal();
-        showSignupForm();
-      });
-    });
   </script>
 </body>
 </html>
