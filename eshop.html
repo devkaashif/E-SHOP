@@ -1,328 +1,59 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Tech Shop - Premium Electronics Store</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="shop.css">
-    <meta name="google-signin-client_id" content="41151099096-5b3umj59h9fqe1rmn8o4qkkrjkfahvsr.apps.googleusercontent.com">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <title>Simple JS App</title>
+  <script src="https://unpkg.com/parse/dist/parse.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Tech Shop</h1>
-            <nav>
-                <ul>
-                    <li><a href="#">Home</a></li>
-                    <li><a href="#">About</a></li>
-                    <li><a href="#">Contact</a></li>
-                    <li><button class="cart-button" type="button" id="open-cart">Cart <span class="cart-badge" id="cart-count">0</span></button></li>
-                    <li><button class="admin-button" type="button" id="admin-toggle" style="display: none;">Admin</button></li>
-                    <li><div class="auth-section" id="auth-section">
-                        <div id="g_id_onload" data-client_id="41151099096-5b3umj59h9fqe1rmn8o4qkkrjkfahvsr.apps.googleusercontent.com" data-callback="handleSignIn" data-auto_prompt="false"></div>
-                        <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_blue" data-text="signin_with" data-size="medium" data-logo_alignment="left" data-width="200" id="signin-button"></div>
-                        <div class="user-profile" id="user-profile" style="display: none;">
-                            <img id="user-avatar" src="" alt="User Avatar">
-                            <span id="user-name"></span>
-                            <button class="sign-out-button" type="button" id="sign-out">Sign Out</button>
-                        </div>
-                    </div></li>
-                </ul>
-            </nav>
-        </header>
-        <div class="searchbar">
-            <input id="product-search" type="search" placeholder="Search products (e.g., headset, router, SSD)..." autocomplete="off" aria-label="Search products">
-            <button id="search-clear" type="button">Clear</button>
-        </div>
-        <div class="shop-toolbar">
-            <div class="toolbar-row">
-                <div class="results-count" id="results-count">Showing items</div>
-                <div class="toolbar-controls">
-                    <select id="sort-by" aria-label="Sort products">
-                        <option value="relevance">Sort: Relevance</option>
-                        <option value="price-asc">Price: Low to High</option>
-                        <option value="price-desc">Price: High to Low</option>
-                        <option value="name-asc">Name: A to Z</option>
-                    </select>
-                </div>
-            </div>
-            <div class="category-row" id="category-row">
-                <button class="chip active" type="button" data-category="all">All</button>
-                <button class="chip" type="button" data-category="audio">Audio</button>
-                <button class="chip" type="button" data-category="computers">Computers</button>
-                <button class="chip" type="button" data-category="mobile">Mobile</button>
-                <button class="chip" type="button" data-category="smart-home">Smart Home</button>
-                <button class="chip" type="button" data-category="accessories">Accessories</button>
-                <button class="chip" type="button" data-category="gaming">Gaming</button>
-                <button class="chip" type="button" data-category="office">Office</button>
-                <button class="chip" type="button" data-category="cameras">Cameras</button>
-                <button class="chip" type="button" data-category="storage">Storage</button>
-                <button class="chip" type="button" data-category="networking">Networking</button>
-            </div>
-        </div>
-        <main>
-            <div class="products">
-                <div class="product" data-name="Nest Smart Thermostat" data-price="$129.99" data-desc="Energy-efficient thermostat that learns your schedule and helps reduce energy costs." data-features="Auto-scheduling|Remote control from phone|Energy reports|Works with smart assistants" data-image="https://picsum.photos/seed/nest-thermostat/600/600.jpg">
-                    <a href="https://picsum.photos/seed/nest-thermostat/600/600.jpg"><img src="https://picsum.photos/seed/nest-thermostat/300/300.jpg" alt="Nest Smart Thermostat"></a>
-                    <h3>Nest Smart Thermostat</h3>
-                    <p>Energy-efficient smart thermostat</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="MacBook Pro 13" data-price="$1,299.00" data-desc="Compact pro laptop built for speed, creativity, and all-day productivity." data-features="Retina display|Fast performance|Long battery life|Premium build" data-image="https://picsum.photos/seed/macbook-pro/600/600.jpg">
-                    <a href="https://picsum.photos/seed/macbook-pro/600/600.jpg"><img src="https://picsum.photos/seed/macbook-pro/300/300.jpg" alt="MacBook Pro 13"></a>
-                    <h3>MacBook Pro 13</h3>
-                    <p>Premium notebook with powerful performance</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Logitech MX Ergonomic Mouse" data-price="$89.99" data-desc="Ergonomic mouse designed for comfort and precision during long sessions." data-features="Ergonomic shape|High-precision sensor|Multi-device pairing|Smooth scrolling" data-image="https://picsum.photos/seed/logitech-mouse/600/600.jpg">
-                    <a href="https://picsum.photos/seed/logitech-mouse/600/600.jpg"><img src="https://picsum.photos/seed/logitech-mouse/300/300.jpg" alt="Logitech MX Ergonomic Gaming Mouse"></a>
-                    <h3>Logitech MX Ergonomic Gaming Mouse</h3>
-                    <p>Ergonomic mouse for gaming and productivity</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Sony WH-1000XM4 Headphones" data-price="$249.99" data-desc="Industry-leading noise cancellation with premium sound and comfort." data-features="Active noise canceling|Wireless + wired|Touch controls|All-day battery" data-image="https://picsum.photos/seed/sony-headphones/600/600.jpg">
-                    <a href="https://picsum.photos/seed/sony-headphones/600/600.jpg"><img src="https://picsum.photos/seed/sony-headphones/300/300.jpg" alt="Sony WH-1000XM4 Headphones"></a>
-                    <h3>Sony WH-1000XM4 Headphones</h3>
-                    <p>Premium noise-canceling wireless headphones</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Samsung Galaxy S21" data-price="$699.00" data-desc="Flagship 5G smartphone with smooth display and versatile camera system." data-features="5G connectivity|High refresh display|Pro-grade camera|Fast charging" data-image="https://picsum.photos/seed/samsung-galaxy/600/600.jpg">
-                    <a href="https://picsum.photos/seed/samsung-galaxy/600/600.jpg"><img src="https://picsum.photos/seed/samsung-galaxy/300/300.jpg" alt="Samsung Galaxy S21"></a>
-                    <h3>Samsung Galaxy S21</h3>
-                    <p>Flagship 5G smartphone with advanced camera</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="iPad 10.2" data-price="$329.00" data-desc="A versatile tablet for notes, streaming, browsing, and everyday productivity." data-features="10.2-inch display|Great for learning|Apple Pencil support|Lightweight" data-image="https://picsum.photos/seed/ipad-tablet/600/600.jpg">
-                    <a href="https://picsum.photos/seed/ipad-tablet/600/600.jpg"><img src="https://picsum.photos/seed/ipad-tablet/300/300.jpg" alt="iPad 10.2"></a>
-                    <h3>iPad 10.2"</h3>
-                    <p>Versatile tablet for work and entertainment</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Bose QuietComfort Earbuds" data-price="$199.00" data-desc="True wireless earbuds with powerful noise cancellation and bold sound." data-features="Noise canceling|Secure fit|Sweat resistant|Charging case included" data-image="https://picsum.photos/seed/bose-earbuds/600/600.jpg">
-                    <a href="https://picsum.photos/seed/bose-earbuds/600/600.jpg"><img src="https://picsum.photos/seed/bose-earbuds/300/300.jpg" alt="Bose QuietComfort Earbuds"></a>
-                    <h3>Bose QuietComfort Earbuds</h3>
-                    <p>True wireless earbuds with noise cancellation</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Apple Watch Series 6" data-price="$399.00" data-desc="Smartwatch with advanced health insights and daily fitness tracking." data-features="Heart rate tracking|Fitness rings|Water resistant|Notifications" data-image="https://picsum.photos/seed/apple-watch/600/600.jpg">
-                    <a href="https://picsum.photos/seed/apple-watch/600/600.jpg"><img src="https://picsum.photos/seed/apple-watch/300/300.jpg" alt="Apple Watch Series 6"></a>
-                    <h3>Apple Watch Series 6</h3>
-                    <p>Advanced fitness and health tracking smartwatch</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="4K Ultra HD Monitor" data-price="$299.99" data-desc="Crisp 4K display built for creators, gamers, and multitasking." data-features="4K resolution|HDR support|Adjustable stand|Multiple inputs" data-image="https://picsum.photos/seed/4k-monitor/600/600.jpg">
-                    <a href="https://picsum.photos/seed/4k-monitor/600/600.jpg"><img src="https://picsum.photos/seed/4k-monitor/300/300.jpg" alt="4K Ultra HD Monitor"></a>
-                    <h3>4K Ultra HD Monitor</h3>
-                    <p>Sharp display with vibrant colors</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Mechanical Gaming Keyboard" data-price="$79.99" data-desc="Responsive mechanical keyboard with satisfying switches and clean design." data-features="Mechanical switches|Customizable backlight|Anti-ghosting|Durable build" data-image="https://picsum.photos/seed/mech-keyboard/600/600.jpg">
-                    <a href="https://picsum.photos/seed/mech-keyboard/600/600.jpg"><img src="https://picsum.photos/seed/mech-keyboard/300/300.jpg" alt="Mechanical Gaming Keyboard"></a>
-                    <h3>Mechanical Gaming Keyboard</h3>
-                    <p>Fast typing with tactile feedback</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Smart Home Speaker" data-price="$49.99" data-desc="Compact smart speaker with rich audio and voice control." data-features="Voice assistant|Multi-room audio|Bluetooth + Wi-Fi|Smart home control" data-image="https://picsum.photos/seed/smart-speaker/600/600.jpg">
-                    <a href="https://picsum.photos/seed/smart-speaker/600/600.jpg"><img src="https://picsum.photos/seed/smart-speaker/300/300.jpg" alt="Smart Home Speaker"></a>
-                    <h3>Smart Home Speaker</h3>
-                    <p>Voice control for your home</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Portable SSD 1TB" data-price="$99.99" data-desc="Fast portable storage for backups, photos, and large video files." data-features="Up to 1TB storage|Fast transfer speeds|USB-C support|Pocket-sized" data-image="https://picsum.photos/seed/portable-ssd/600/600.jpg">
-                    <a href="https://picsum.photos/seed/portable-ssd/600/600.jpg"><img src="https://picsum.photos/seed/portable-ssd/300/300.jpg" alt="Portable SSD 1TB"></a>
-                    <h3>Portable SSD 1TB</h3>
-                    <p>High-speed external storage</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Wi‑Fi 6 Router" data-price="$119.99" data-desc="Upgrade your home network with faster speeds and better coverage." data-features="Wi‑Fi 6 performance|Strong coverage|Multiple device support|Easy setup" data-image="https://picsum.photos/seed/wifi6-router/600/600.jpg">
-                    <a href="https://picsum.photos/seed/wifi6-router/600/600.jpg"><img src="https://picsum.photos/seed/wifi6-router/300/300.jpg" alt="Wi‑Fi 6 Router"></a>
-                    <h3>Wi‑Fi 6 Router</h3>
-                    <p>Faster Wi‑Fi, smoother streaming</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="GoPro Action Camera" data-price="$279.99" data-desc="Capture adventures with stabilized video and rugged waterproof design." data-features="4K video|Image stabilization|Waterproof body|Wide-angle lens" data-image="https://picsum.photos/seed/action-camera/600/600.jpg">
-                    <a href="https://picsum.photos/seed/action-camera/600/600.jpg"><img src="https://picsum.photos/seed/action-camera/300/300.jpg" alt="GoPro Action Camera"></a>
-                    <h3>GoPro Action Camera</h3>
-                    <p>Adventure-ready 4K recording</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Mini Drone Quadcopter" data-price="$159.99" data-desc="Easy-to-fly drone for aerial photos and smooth stabilized footage." data-features="HD camera|Stabilized flight|Beginner friendly|Rechargeable battery" data-image="https://picsum.photos/seed/mini-drone/600/600.jpg">
-                    <a href="https://picsum.photos/seed/mini-drone/600/600.jpg"><img src="https://picsum.photos/seed/mini-drone/300/300.jpg" alt="Mini Drone Quadcopter"></a>
-                    <h3>Mini Drone Quadcopter</h3>
-                    <p>Stable flight with camera</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="VR Headset" data-price="$349.00" data-desc="Immersive virtual reality for games, fitness, and interactive experiences." data-features="High-resolution display|Room-scale tracking|Comfortable fit|Wireless freedom" data-image="https://picsum.photos/seed/vr-headset/600/600.jpg">
-                    <a href="https://picsum.photos/seed/vr-headset/600/600.jpg"><img src="https://picsum.photos/seed/vr-headset/300/300.jpg" alt="VR Headset"></a>
-                    <h3>VR Headset</h3>
-                    <p>Immersive gaming and experiences</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Wireless Charging Pad" data-price="$24.99" data-desc="Fast wireless charger for phones and earbuds with a slim, desk-friendly design." data-features="Fast charging|Case-friendly|LED indicator|Non-slip surface" data-image="https://picsum.photos/seed/wireless-charger/600/600.jpg">
-                    <a href="https://picsum.photos/seed/wireless-charger/600/600.jpg"><img src="https://picsum.photos/seed/wireless-charger/300/300.jpg" alt="Wireless Charging Pad"></a>
-                    <h3>Wireless Charging Pad</h3>
-                    <p>Fast, tidy, cable-free charging</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="USB‑C Hub Adapter" data-price="$39.99" data-desc="Expand your laptop ports with HDMI, USB, and SD card support." data-features="HDMI output|USB 3.0 ports|SD/microSD reader|Compact design" data-image="https://picsum.photos/seed/usbc-hub/600/600.jpg">
-                    <a href="https://picsum.photos/seed/usbc-hub/600/600.jpg"><img src="https://picsum.photos/seed/usbc-hub/300/300.jpg" alt="USB‑C Hub Adapter"></a>
-                    <h3>USB‑C Hub Adapter</h3>
-                    <p>More ports for work and travel</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Smart LED Light Bulbs (2-Pack)" data-price="$29.99" data-desc="Control brightness and schedules from your phone to set the perfect mood." data-features="App control|Dimmable|Schedules|Voice assistant compatible" data-image="https://picsum.photos/seed/smart-bulbs/600/600.jpg">
-                    <a href="https://picsum.photos/seed/smart-bulbs/600/600.jpg"><img src="https://picsum.photos/seed/smart-bulbs/300/300.jpg" alt="Smart LED Light Bulbs"></a>
-                    <h3>Smart LED Light Bulbs</h3>
-                    <p>Easy smart lighting upgrade</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Bluetooth Portable Speaker" data-price="$59.99" data-desc="Compact speaker with punchy sound and a durable build for daily use." data-features="Deep bass|Bluetooth 5.0|Water resistant|Long battery" data-image="https://picsum.photos/seed/bluetooth-speaker/600/600.jpg">
-                    <a href="https://picsum.photos/seed/bluetooth-speaker/600/600.jpg"><img src="https://picsum.photos/seed/bluetooth-speaker/300/300.jpg" alt="Bluetooth Portable Speaker"></a>
-                    <h3>Bluetooth Speaker</h3>
-                    <p>Big sound in a small body</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Fitness Smart Band" data-price="$49.00" data-desc="Track steps, workouts, and sleep with a lightweight wearable." data-features="Heart rate tracking|Sleep insights|Workout modes|Water resistant" data-image="https://picsum.photos/seed/fitness-band/600/600.jpg">
-                    <a href="https://picsum.photos/seed/fitness-band/600/600.jpg"><img src="https://picsum.photos/seed/fitness-band/300/300.jpg" alt="Fitness Smart Band"></a>
-                    <h3>Fitness Smart Band</h3>
-                    <p>Simple health tracking everyday</p>
-                    <button>Add to Cart</button>
-                </div>
-                <div class="product" data-name="Ergonomic Office Chair" data-price="$219.99" data-desc="Comfortable chair built for long study or work sessions with adjustable support." data-features="Adjustable height|Lumbar support|Breathable mesh|Smooth wheels" data-image="https://picsum.photos/seed/office-chair/600/600.jpg">
-                    <a href="https://picsum.photos/seed/office-chair/600/600.jpg"><img src="https://picsum.photos/seed/office-chair/300/300.jpg" alt="Ergonomic Office Chair"></a>
-                    <h3>Ergonomic Office Chair</h3>
-                    <p>Comfort for long sessions</p>
-                    <button>Add to Cart</button>
-                </div>
-            </div>
-            <section class="product-page" id="product-page" hidden>
-                <div class="product-page-topbar">
-                    <button class="back-button" type="button" id="back-to-shop">← Back to Shop</button>
-                    <div></div>
-                </div>
-                <div class="product-page-grid">
-                    <img class="product-page-image" id="page-image" src="" alt="">
-                    <div>
-                        <div class="product-page-title" id="page-title"></div>
-                        <div class="product-page-price" id="page-price"></div>
-                        <p class="product-page-desc" id="page-desc"></p>
-                        <div class="modal-subtitle">Key Features</div>
-                        <ul class="modal-features" id="page-features"></ul>
-                        <div class="product-page-meta">
-                            <div class="qty">
-                                <label for="page-qty">Qty</label>
-                                <input id="page-qty" type="number" min="1" value="1">
-                            </div>
-                            <button class="modal-action primary" type="button" id="page-add-to-cart">Add to Cart</button>
-                            <button class="buy-button" type="button" id="buy-now">Buy Now</button>
-                        </div>
-                        <div class="buy-message" id="buy-message">Order placed! (Demo) You can replace this with real checkout later.</div>
-                    </div>
-                </div>
-            </section>
-        </main>
-        <section class="admin-panel" id="admin-panel" hidden>
-            <div class="admin-header">
-                <h2>Admin Panel - Add New Item</h2>
-                <button class="admin-close" type="button" id="admin-close">×</button>
-            </div>
-            <form class="admin-form" id="admin-form">
-                <div class="form-group">
-                    <label for="admin-name">Product Name</label>
-                    <input type="text" id="admin-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="admin-price">Price</label>
-                    <input type="text" id="admin-price" placeholder="$99.99" required>
-                </div>
-                <div class="form-group">
-                    <label for="admin-desc">Description</label>
-                    <textarea id="admin-desc" rows="3" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="admin-features">Features (separate with |)</label>
-                    <input type="text" id="admin-features" placeholder="Feature 1 | Feature 2 | Feature 3" required>
-                </div>
-                <div class="form-group">
-                    <label for="admin-image">Image URL</label>
-                    <input type="url" id="admin-image" placeholder="https://example.com/image.jpg" required>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="admin-submit">Add Item</button>
-                    <button type="button" class="admin-cancel" id="admin-cancel">Cancel</button>
-                </div>
-            </form>
-            <div class="admin-items">
-                <h3>Admin Items</h3>
-                <div class="admin-items-list" id="admin-items-list"></div>
-            </div>
-        </section>
-        <div class="modal-overlay" id="product-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title">
-            <div class="modal" role="document">
-                <div class="modal-header">
-                    <div>
-                        <div class="modal-title" id="modal-title"></div>
-                        <div class="modal-price" id="modal-price"></div>
-                    </div>
-                    <button class="modal-close" type="button" id="modal-close" aria-label="Close">×</button>
-                </div>
-                <div class="modal-body">
-                    <img class="modal-image" id="modal-image" src="" alt="">
-                    <div>
-                        <p class="modal-desc" id="modal-desc"></p>
-                        <div class="modal-subtitle">Key Features</div>
-                        <ul class="modal-features" id="modal-features"></ul>
-                        <div class="modal-actions">
-                            <button class="modal-action primary" type="button" id="modal-add">Add to Cart</button>
-                            <button class="modal-action" type="button" id="modal-close-2">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="cart-overlay" id="cart-overlay" aria-hidden="true"></div>
-        <aside class="cart-drawer" id="cart-drawer" aria-hidden="true">
-            <div class="cart-header">
-                <div class="cart-title">Your Cart</div>
-                <button class="cart-close" type="button" id="close-cart" aria-label="Close">×</button>
-            </div>
-            <div class="cart-items" id="cart-items"></div>
-            <div class="cart-footer">
-                <div class="cart-total">
-                    <div>Total</div>
-                    <div id="cart-total">$0.00</div>
-                </div>
-                <button class="checkout-button" type="button" id="checkout">Checkout</button>
-            </div>
-        </aside>
-        <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
-        <footer>
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>About Tech Shop</h3>
-                    <p>Your one-stop destination for the latest technology products and gadgets.</p>
-                </div>
-                <div class="footer-section">
-                    <h3>Quick Links</h3>
-                    <ul>
-                        <li><a href="#">Privacy Policy</a></li>
-                        <li><a href="#">Terms of Service</a></li>
-                        <li><a href="#">Shipping Info</a></li>
-                        <li><a href="#">Returns</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Contact Us</h3>
-                    <p>Email: info@techshop.com</p>
-                    <p>Phone: 1-800-TECH-SHOP</p>
-                    <p>Hours: Mon-Fri 9AM-6PM</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 Tech Shop. All rights reserved.</p>
-            </div>
-        </footer>
-    </div>
-    <script src="shop.js"></script>
+
+<h3>Simple JS App</h3>
+
+<input id="msg" onkeypress="if(event.key==='Enter')save()" placeholder="Message">
+<button onclick="save()">Save</button>
+<button onclick="clearAll()">Delete All</button>
+
+<ul id="list"></ul>
+
+<script>
+Parse.initialize(
+  "djkSHBgfXAnlutSN8QALWWcIXS3QfhwNdW69uzTt",
+  "J6MyioChlfen0LSeH8xqRwVmmi0kFSBJ2Uojk8hn"
+);
+Parse.serverURL = "https://parseapi.back4app.com";
+
+const input = document.getElementById("msg");
+const list = document.getElementById("list");
+
+async function save() {
+  if (!input.value) return;
+  await new Parse.Object("Message").save({ text: input.value +" " });
+  input.value = "";
+  load();
+}
+
+async function load() {
+  
+  const msgs = await new Parse.Query("Message")
+    .descending("createdAt")
+    .find();
+
+
+  msgs.forEach(m => list.innerHTML +=m.get("text"));
+    list.innerHTML ="";
+    msgs.forEach(m => list.innerHTML +=m.get("text"));
+}
+
+async function clearAll() {
+  if (!confirm("Delete all messages?")) return;
+  const msgs = await new Parse.Query("Message").find();
+  await Parse.Object.destroyAll(msgs);
+  load();
+}
+
+load();
+
+setInterval(load)
+</script>
+
 </body>
 </html>
